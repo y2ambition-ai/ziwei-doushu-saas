@@ -1,0 +1,367 @@
+{
+  "project": "ziwei-doushu-saas",
+  "version": "0.1.0",
+  "features": [
+    {
+      "id": "F001",
+      "category": "infrastructure",
+      "priority": 1,
+      "description": "项目迁移至 Next.js 16 App Router",
+      "steps": [
+        "创建 Next.js 16 项目",
+        "迁移 Tailwind CSS 配置",
+        "迁移现有组件到新项目",
+        "验证页面渲染正常"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F002",
+      "category": "infrastructure",
+      "priority": 2,
+      "description": "配置 Prisma + PostgreSQL 数据库",
+      "steps": [
+        "安装 Prisma 依赖",
+        "设计 Schema (Customer, Order, Report)",
+        "生成 Prisma Client",
+        "连接数据库成功"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F003",
+      "category": "infrastructure",
+      "priority": 2,
+      "description": "创建 init.sh 开发环境启动脚本",
+      "steps": [
+        "编写启动脚本",
+        "包含数据库迁移",
+        "包含开发服务器启动",
+        "脚本可执行"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F004",
+      "category": "core",
+      "priority": 3,
+      "description": "真太阳时换算模块",
+      "steps": [
+        "实现平太阳时计算",
+        "实现均时差 (Equation of Time) 算法",
+        "根据经度计算真太阳时",
+        "返回修正后的时辰"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F005",
+      "category": "core",
+      "priority": 3,
+      "description": "城市经纬度数据库",
+      "steps": [
+        "收集中国主要城市经纬度数据",
+        "创建 JSON 数据文件",
+        "实现城市搜索/匹配功能",
+        "支持模糊匹配"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F006",
+      "category": "core",
+      "priority": 4,
+      "description": "iztro 排盘引擎封装",
+      "steps": [
+        "安装 iztro 依赖",
+        "创建 Wrapper Service",
+        "适配真太阳时输入",
+        "返回标准化 JSON"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F007",
+      "category": "core",
+      "priority": 4,
+      "description": "排盘引擎测试验证",
+      "steps": [
+        "创建名人命盘测试用例",
+        "断言命宫主星正确",
+        "断言重要格局正确",
+        "所有测试通过"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F008",
+      "category": "core",
+      "priority": 5,
+      "description": "排盘数据解析器 (Parser)",
+      "steps": [
+        "提取12宫主星数据",
+        "提取重要辅星",
+        "提取四化信息",
+        "输出精简 JSON"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F009",
+      "category": "llm",
+      "priority": 6,
+      "description": "火山引擎豆包 API 集成",
+      "steps": [
+        "配置 API Key 环境变量",
+        "创建 OpenAI 兼容客户端",
+        "测试 API 连通性",
+        "实现流式响应"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F010",
+      "category": "llm",
+      "priority": 6,
+      "description": "Prompt Engineering",
+      "steps": [
+        "设计 System Prompt (命理师人设)",
+        "设计 User Prompt 模板",
+        "注入清洗后的星盘数据",
+        "输出格式规范化"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F011",
+      "category": "llm",
+      "priority": 7,
+      "description": "AI 解读生成 API",
+      "steps": [
+        "创建 /api/report/generate 端点",
+        "接收用户输入参数",
+        "调用排盘引擎",
+        "调用 LLM 生成解读",
+        "存储到数据库"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F012",
+      "category": "frontend",
+      "priority": 8,
+      "description": "落地页表单组件",
+      "steps": [
+        "邮箱输入框",
+        "性别选择",
+        "出生城市选择 (带自动补全)",
+        "出生日期选择器",
+        "出生时辰选择",
+        "表单验证"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F013",
+      "category": "frontend",
+      "priority": 8,
+      "description": "落地页 UI 迁移",
+      "steps": [
+        "迁移现有设计到 Next.js",
+        "保持东方禅意风格",
+        "响应式布局",
+        "动画效果保留"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F014",
+      "category": "payment",
+      "priority": 9,
+      "description": "Stripe Checkout 集成",
+      "steps": [
+        "配置 Stripe Secret Key",
+        "创建 Checkout Session API",
+        "设置成功/取消回调 URL",
+        "前端跳转逻辑"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F015",
+      "category": "payment",
+      "priority": 9,
+      "description": "Stripe Webhook 处理",
+      "steps": [
+        "创建 Webhook 端点",
+        "验证签名",
+        "处理 checkout.session.completed",
+        "更新订单状态",
+        "触发报告生成"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F016",
+      "category": "frontend",
+      "priority": 10,
+      "description": "支付成功 Loading 页面",
+      "steps": [
+        "显示星盘推算中动画",
+        "优雅的等待体验",
+        "自动跳转到报告页",
+        "错误处理"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F017",
+      "category": "frontend",
+      "priority": 10,
+      "description": "报告结果页面",
+      "steps": [
+        "顶部核心身份卡片",
+        "Markdown 正文渲染",
+        "分享按钮",
+        "重新测算入口"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F018",
+      "category": "email",
+      "priority": 11,
+      "description": "Resend 邮件服务集成",
+      "steps": [
+        "配置 Resend API Key",
+        "设计邮件模板",
+        "发送报告链接邮件",
+        "邮件送达测试"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F019",
+      "category": "email",
+      "priority": 11,
+      "description": "报告链接生成",
+      "steps": [
+        "生成唯一报告 ID",
+        "创建 /result/[id] 路由",
+        "从数据库获取报告",
+        "链接有效期管理"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F020",
+      "category": "security",
+      "priority": 12,
+      "description": "环境变量与安全配置",
+      "steps": [
+        "创建 .env.example",
+        "配置所有敏感信息",
+        "Stripe Webhook Secret",
+        "数据库连接串加密"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F021",
+      "category": "deployment",
+      "priority": 13,
+      "description": "Vercel 部署配置",
+      "steps": [
+        "配置 vercel.json",
+        "设置环境变量",
+        "配置域名",
+        "部署成功"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F022",
+      "category": "e2e",
+      "priority": 14,
+      "description": "端到端测试 - 完整用户流程",
+      "steps": [
+        "填写表单",
+        "模拟支付成功",
+        "验证报告生成",
+        "验证邮件发送"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F023",
+      "category": "optimization",
+      "priority": 15,
+      "description": "性能优化",
+      "steps": [
+        "图片优化",
+        "代码分割",
+        "API 响应缓存",
+        "Core Web Vitals 达标"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F024",
+      "category": "monitoring",
+      "priority": 16,
+      "description": "错误监控与日志",
+      "steps": [
+        "集成 Sentry",
+        "API 错误日志",
+        "支付异常监控",
+        "告警配置"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F025",
+      "category": "docs",
+      "priority": 17,
+      "description": "项目文档完善",
+      "steps": [
+        "README 更新",
+        "API 文档",
+        "部署指南",
+        "维护手册"
+      ],
+      "passes": false
+    }
+  ],
+  "phases": [
+    {
+      "name": "Phase 1: Infrastructure",
+      "features": ["F001", "F002", "F003"],
+      "description": "项目基础设施搭建"
+    },
+    {
+      "name": "Phase 2: Core Engine",
+      "features": ["F004", "F005", "F006", "F007", "F008"],
+      "description": "排盘引擎与真太阳时"
+    },
+    {
+      "name": "Phase 3: LLM Integration",
+      "features": ["F009", "F010", "F011"],
+      "description": "大模型集成"
+    },
+    {
+      "name": "Phase 4: Frontend",
+      "features": ["F012", "F013", "F016", "F017"],
+      "description": "前端页面开发"
+    },
+    {
+      "name": "Phase 5: Payment & Email",
+      "features": ["F014", "F015", "F018", "F019"],
+      "description": "支付与邮件"
+    },
+    {
+      "name": "Phase 6: Production",
+      "features": ["F020", "F021", "F022", "F023", "F024", "F025"],
+      "description": "生产部署"
+    }
+  ]
+}
