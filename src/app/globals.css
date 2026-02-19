@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+:root {
+  --color-bg: #F7F3EC;
+  --color-gold: #B8925A;
+  --color-dark: #1A0F05;
+}
+
+body {
+  background-color: var(--color-bg);
+  font-family: 'Noto Serif SC', serif;
+  color: var(--color-dark);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gold);
+  border-radius: 3px;
+}

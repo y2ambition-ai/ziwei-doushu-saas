@@ -1,0 +1,65 @@
+// Prisma Schema for ZiWei SaaS
+// Using SQLite for local development
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  orders    Order[]
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  stripeSessionId String   @unique
+  status          OrderStatus @default(pending)
+  amount          Float
+  createdAt       DateTime @default(now())
+  paidAt          DateTime?
+  report          Report?
+}
+
+model Report {
+  id            String   @id @default(cuid())
+  orderId       String   @unique
+  order         Order    @relation(fields: [orderId], references: [id])
+
+  // User input
+  email         String
+  gender        String   // "male" | "female"
+  birthDate     String   // YYYY-MM-DD
+  birthTime     Int      // 0-23 hour
+  birthMinute   Int      @default(0)
+  birthCity     String
+  longitude     Float
+  latitude      Float
+  trueSolarTime String?  // Calculated true solar time
+
+  // Astrology data
+  rawAstrolabe  String?  // JSON string - iztro raw output
+  parsedData    String?  // JSON string - parsed core data
+
+  // AI generated
+  aiReport      String?  // Markdown format AI interpretation
+  coreIdentity  String?  // Core identity card, e.g. "Ming Gong: ZiWei·QiSha"
+
+  createdAt     DateTime @default(now())
+  completedAt   DateTime?
+}
+
+enum OrderStatus {
+  pending
+  paid
+  failed
+  refunded
+}
