@@ -185,7 +185,7 @@
         "设置成功/取消回调 URL",
         "前端跳转逻辑"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F015",
@@ -199,7 +199,7 @@
         "更新订单状态",
         "触发报告生成"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F016",
