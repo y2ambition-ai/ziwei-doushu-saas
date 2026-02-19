@@ -4,21 +4,36 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BaguaBackground } from '@/components/BaguaBackground';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ReportData {
+  reportId: string;
+  coreIdentity: string;
+  report: string;
+  astrolabe: {
+    mingGong: { name: string; majorStars: string[] };
+    wuXingJu: string;
+    chineseZodiac: string;
+    siZhu: { year: string; month: string; day: string; hour: string };
+    solarTime: { shichen: number; shichenName: string };
+  };
+}
+
 // ─── Data ────────────────────────────────────────────────────────────────────
 
 const SHICHEN = [
-  { value: 'zi', label: '子时 · 23:00–01:00', animal: '鼠', hour: 0 },
-  { value: 'chou', label: '丑时 · 01:00–03:00', animal: '牛', hour: 2 },
-  { value: 'yin', label: '寅时 · 03:00–05:00', animal: '虎', hour: 4 },
-  { value: 'mao', label: '卯时 · 05:00–07:00', animal: '兔', hour: 6 },
-  { value: 'chen', label: '辰时 · 07:00–09:00', animal: '龙', hour: 8 },
-  { value: 'si', label: '巳时 · 09:00–11:00', animal: '蛇', hour: 10 },
-  { value: 'wu', label: '午时 · 11:00–13:00', animal: '马', hour: 12 },
-  { value: 'wei', label: '未时 · 13:00–15:00', animal: '羊', hour: 14 },
-  { value: 'shen', label: '申时 · 15:00–17:00', animal: '猴', hour: 16 },
-  { value: 'you', label: '酉时 · 17:00–19:00', animal: '鸡', hour: 18 },
-  { value: 'xu', label: '戌时 · 19:00–21:00', animal: '狗', hour: 20 },
-  { value: 'hai', label: '亥时 · 21:00–23:00', animal: '猪', hour: 22 },
+  { value: 'zi', label: '子时 · 23:00–01:00', animal: '鼠', hour: 0, shichenIndex: 0 },
+  { value: 'chou', label: '丑时 · 01:00–03:00', animal: '牛', hour: 2, shichenIndex: 1 },
+  { value: 'yin', label: '寅时 · 03:00–05:00', animal: '虎', hour: 4, shichenIndex: 2 },
+  { value: 'mao', label: '卯时 · 05:00–07:00', animal: '兔', hour: 6, shichenIndex: 3 },
+  { value: 'chen', label: '辰时 · 07:00–09:00', animal: '龙', hour: 8, shichenIndex: 4 },
+  { value: 'si', label: '巳时 · 09:00–11:00', animal: '蛇', hour: 10, shichenIndex: 5 },
+  { value: 'wu', label: '午时 · 11:00–13:00', animal: '马', hour: 12, shichenIndex: 6 },
+  { value: 'wei', label: '未时 · 13:00–15:00', animal: '羊', hour: 14, shichenIndex: 7 },
+  { value: 'shen', label: '申时 · 15:00–17:00', animal: '猴', hour: 16, shichenIndex: 8 },
+  { value: 'you', label: '酉时 · 17:00–19:00', animal: '鸡', hour: 18, shichenIndex: 9 },
+  { value: 'xu', label: '戌时 · 19:00–21:00', animal: '狗', hour: 20, shichenIndex: 10 },
+  { value: 'hai', label: '亥时 · 21:00–23:00', animal: '猪', hour: 22, shichenIndex: 11 },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -43,53 +58,70 @@ export default function HomePage() {
     month: '',
     day: '',
     shichen: '',
+    city: '北京',
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLElement>(null);
 
   const years = Array.from({ length: 120 }, (_, i) => 2010 - i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
 
-  // Mock result for development
-  const MOCK_RESULT = {
-    pattern: '坤命火局，贵人福星照命',
-    elements: [
-      { name: '木', value: 15, color: '#4a7c59' },
-      { name: '火', value: 32, color: '#c0392b' },
-      { name: '土', value: 28, color: '#b8935a' },
-      { name: '金', value: 10, color: '#8e8e8e' },
-      { name: '水', value: 15, color: '#2980b9' },
-    ],
-    ziwei: '紫微星临命宫，气宇不凡，天生领导气质，适合开创事业。辅以天府星，财帛充盈，中晚年运势尤为旺盛。',
-    annual: '2025年流年太岁"乙巳"蛇年入命，事业宫文曲星聚集，学业与创作方向大吉。三月至六月为黄金期，宜主动出击。',
-    advice: [
-      '命局偏火，需以水性事物调候——靠近江河湖海，或从事水利、金融、航运等行业为宜',
-      '今年农历三月（4月）为关键转折点，宜把握贵人提携机遇，勿因犹豫错失',
-      '健康方面注意心脏与眼睛，作息规律、减少熬夜，方能保住旺盛的火性能量',
-      '感情宫有吉星照临，今年下半年缘分显现，属水之人与您最为相配',
-    ],
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.email || !form.gender || !form.year || !form.month || !form.day || !form.shichen) return;
-    setLoading(true);
 
-    // TODO: Call actual API
-    // For now, mock the payment flow
-    setTimeout(() => {
-      setLoading(false);
+    setLoading(true);
+    setError(null);
+
+    // Get shichen index
+    const shichenData = SHICHEN.find(s => s.value === form.shichen);
+    const shichenIndex = shichenData?.shichenIndex ?? 6;
+
+    // Build date string
+    const birthDate = `${form.year}-${String(form.month).padStart(2, '0')}-${String(form.day).padStart(2, '0')}`;
+
+    try {
+      const response = await fetch('/api/report/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.email,
+          gender: form.gender,
+          birthDate,
+          birthTime: shichenData?.hour ?? 12,
+          birthMinute: 0,
+          birthCity: form.city,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '报告生成失败');
+      }
+
+      setReportData(data);
       setSubmitted(true);
       setTimeout(() => {
         document.getElementById('result-section')?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
-    }, 2200);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '报告生成失败，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const scrollToForm = () => {
     formRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const resetForm = () => {
+    setForm({ email: '', gender: '', year: '', month: '', day: '', shichen: '', city: '北京' });
   };
 
   const inputCls =
@@ -354,6 +386,21 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* Birth City */}
+            <div>
+              <label className="block text-[#1A0F05]/60 text-xs tracking-widest mb-2">
+                出生城市 · Birth City
+              </label>
+              <input
+                type="text"
+                placeholder="请输入出生城市，如：北京"
+                value={form.city}
+                onChange={(e) => setForm({ ...form, city: e.target.value })}
+                className={inputCls}
+                required
+              />
+            </div>
+
             {/* Price + Submit */}
             <div className="pt-4">
               <div className="flex items-center justify-between mb-4 px-1">
@@ -392,7 +439,7 @@ export default function HomePage() {
 
       {/* ── RESULT ─────────────────────────────────────────────── */}
       <AnimatePresence>
-        {submitted && (
+        {submitted && reportData && (
           <motion.section
             id="result-section"
             className="py-28 px-8 md:px-16 max-w-5xl mx-auto"
@@ -404,83 +451,47 @@ export default function HomePage() {
             <div className="text-center mb-14">
               <p className="text-[#B8925A] tracking-[0.3em] text-xs mb-4 uppercase">您的命理报告</p>
               <h2 className="text-[#1A0F05] mb-3 text-xl md:text-2xl font-light tracking-wide">
-                {form.email} · {MOCK_RESULT.pattern}
+                {form.email}
               </h2>
+              <p className="text-[#B8925A] text-sm mb-4">
+                {reportData.astrolabe.siZhu.year} {reportData.astrolabe.siZhu.month} {reportData.astrolabe.siZhu.day} {reportData.astrolabe.siZhu.hour} · {reportData.astrolabe.chineseZodiac}
+              </p>
               <Divider />
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Five Elements */}
-              <div className="border border-[#B8925A]/20 p-8">
-                <h3 className="text-[#1A0F05] tracking-widest text-sm mb-6 font-serif">
-                  五行能量分布
-                </h3>
-                <div className="space-y-4">
-                  {MOCK_RESULT.elements.map(({ name, value, color }) => (
-                    <div key={name}>
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span className="text-[#1A0F05]/70 tracking-widest">{name}</span>
-                        <span className="text-[#1A0F05]/50">{value}%</span>
-                      </div>
-                      <div className="h-px bg-[#1A0F05]/10 relative">
-                        <motion.div
-                          className="absolute top-0 left-0 h-full"
-                          style={{ backgroundColor: color, opacity: 0.7 }}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${value}%` }}
-                          transition={{ duration: 1.2, delay: 0.3, ease: 'easeOut' }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Annual Fortune */}
-              <div className="border border-[#B8925A]/20 p-8">
-                <h3 className="text-[#1A0F05] tracking-widest text-sm mb-5 font-serif">
-                  流年运势
-                </h3>
-                <p className="text-[#1A0F05]/60 text-xs leading-loose tracking-wide">
-                  {MOCK_RESULT.annual}
-                </p>
-              </div>
-
-              {/* Purple Star */}
-              <div className="border border-[#B8925A]/20 p-8">
-                <h3 className="text-[#1A0F05] tracking-widest text-sm mb-5 font-serif">
-                  紫微斗数 · 命宫解析
-                </h3>
-                <p className="text-[#1A0F05]/60 text-xs leading-loose tracking-wide">
-                  {MOCK_RESULT.ziwei}
-                </p>
-              </div>
-
-              {/* Life Advice */}
-              <div className="border border-[#B8925A]/20 p-8">
-                <h3 className="text-[#1A0F05] tracking-widest text-sm mb-5 font-serif">
-                  人生指引
-                </h3>
-                <p className="text-[#1A0F05]/60 text-xs leading-loose tracking-wide">
-                  根据您的命盘特点，建议在事业发展上把握贵人运势，在健康方面注意作息规律。
-                </p>
-              </div>
+            {/* Core Identity Card */}
+            <div className="mb-8 p-6 bg-[#1A0F05] text-[#F7F3EC] text-center">
+              <p className="text-[#B8925A] text-xs tracking-widest mb-2">核心身份</p>
+              <p className="text-lg">{reportData.coreIdentity}</p>
             </div>
 
-            {/* Advice */}
-            <div className="mt-8 border border-[#B8925A]/20 p-8">
-              <h3 className="text-[#1A0F05] tracking-widest text-sm mb-6 font-serif">
-                道家指引 · 四项建议
-              </h3>
-              <div className="grid md:grid-cols-2 gap-5">
-                {MOCK_RESULT.advice.map((item, i) => (
-                  <div key={i} className="flex gap-4">
-                    <span className="text-[#B8925A] text-xs mt-0.5 flex-shrink-0">
-                      {['☰', '☵', '☲', '☷'][i]}
-                    </span>
-                    <p className="text-[#1A0F05]/60 text-xs leading-loose tracking-wide">{item}</p>
-                  </div>
-                ))}
+            {/* Report Content */}
+            <div className="border border-[#B8925A]/20 p-8">
+              <div className="prose prose-sm max-w-none text-[#1A0F05]/80">
+                {reportData.report.split('\n').map((line, i) => {
+                  if (line.startsWith('# ')) {
+                    return <h1 key={i} className="text-xl font-medium text-[#1A0F05] mt-6 mb-4">{line.slice(2)}</h1>;
+                  }
+                  if (line.startsWith('## ')) {
+                    return <h2 key={i} className="text-lg font-medium text-[#1A0F05] mt-6 mb-3">{line.slice(3)}</h2>;
+                  }
+                  if (line.startsWith('### ')) {
+                    return <h3 key={i} className="text-base font-medium text-[#1A0F05] mt-4 mb-2">{line.slice(4)}</h3>;
+                  }
+                  if (line.startsWith('- ')) {
+                    return <li key={i} className="ml-4 text-sm leading-relaxed">{line.slice(2)}</li>;
+                  }
+                  if (line.startsWith('|')) {
+                    return null; // Skip table rows for now
+                  }
+                  if (line.trim() === '---') {
+                    return <Divider key={i} />;
+                  }
+                  if (line.trim()) {
+                    return <p key={i} className="text-sm leading-relaxed mb-3">{line}</p>;
+                  }
+                  return null;
+                })}
               </div>
             </div>
 
@@ -488,7 +499,8 @@ export default function HomePage() {
               <button
                 onClick={() => {
                   setSubmitted(false);
-                  setForm({ email: '', gender: '', year: '', month: '', day: '', shichen: '' });
+                  setReportData(null);
+                  setForm({ email: '', gender: '', year: '', month: '', day: '', shichen: '', city: '北京' });
                   scrollToForm();
                 }}
                 className="text-xs tracking-widest text-[#B8925A] border-b border-[#B8925A]/40 pb-0.5 hover:border-[#B8925A] transition-colors duration-300"
@@ -497,6 +509,26 @@ export default function HomePage() {
               </button>
             </div>
           </motion.section>
+        )}
+      </AnimatePresence>
+
+      {/* Error Message */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-red-500 text-white rounded-lg shadow-lg"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+          >
+            {error}
+            <button
+              onClick={() => setError(null)}
+              className="ml-4 text-white/80 hover:text-white"
+            >
+              ✕
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
 

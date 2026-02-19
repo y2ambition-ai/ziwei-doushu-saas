@@ -159,7 +159,7 @@
         "出生时辰选择",
         "表单验证"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F013",
@@ -172,7 +172,7 @@
         "响应式布局",
         "动画效果保留"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F014",

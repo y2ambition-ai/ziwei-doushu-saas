@@ -111,8 +111,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Report generation error:', error);
+    const errorMessage = error instanceof Error ? error.message : '未知错误';
     return NextResponse.json(
-      { error: '报告生成失败，请稍后重试' },
+      { error: `报告生成失败: ${errorMessage}` },
       { status: 500 }
     );
   }
