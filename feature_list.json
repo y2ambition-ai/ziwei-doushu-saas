@@ -117,7 +117,7 @@
         "测试 API 连通性",
         "实现流式响应"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F010",
@@ -130,7 +130,7 @@
         "注入清洗后的星盘数据",
         "输出格式规范化"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F011",
@@ -144,7 +144,7 @@
         "调用 LLM 生成解读",
         "存储到数据库"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F012",

@@ -26,13 +26,13 @@ model Order {
   amount          Float
   createdAt       DateTime @default(now())
   paidAt          DateTime?
-  report          Report?
+  report          Report?  @relation("OrderToReport")
 }
 
 model Report {
   id            String   @id @default(cuid())
-  orderId       String   @unique
-  order         Order    @relation(fields: [orderId], references: [id])
+  orderId       String?  @unique // Optional for free test reports
+  order         Order?   @relation("OrderToReport", fields: [orderId], references: [id])
 
   // User input
   email         String
@@ -42,7 +42,7 @@ model Report {
   birthMinute   Int      @default(0)
   birthCity     String
   longitude     Float
-  latitude      Float
+  latitude      Float    @default(0)
   trueSolarTime String?  // Calculated true solar time
 
   // Astrology data
