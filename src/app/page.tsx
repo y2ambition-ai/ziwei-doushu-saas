@@ -58,7 +58,9 @@ export default function HomePage() {
     month: '',
     day: '',
     shichen: '',
-    city: '北京',
+    // 当前位置时间（用于计算时区偏移）
+    currentHour: '',
+    currentMinute: '',
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -69,17 +71,18 @@ export default function HomePage() {
   const years = Array.from({ length: 120 }, (_, i) => 2010 - i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const minutes = Array.from({ length: 60 }, (_, i) => i);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.email || !form.gender || !form.year || !form.month || !form.day || !form.shichen) return;
+    if (!form.email || !form.gender || !form.year || !form.month || !form.day || !form.shichen || !form.currentHour) return;
 
     setLoading(true);
     setError(null);
 
     // Get shichen index
     const shichenData = SHICHEN.find(s => s.value === form.shichen);
-    const shichenIndex = shichenData?.shichenIndex ?? 6;
 
     // Build date string
     const birthDate = `${form.year}-${String(form.month).padStart(2, '0')}-${String(form.day).padStart(2, '0')}`;
@@ -94,7 +97,9 @@ export default function HomePage() {
           birthDate,
           birthTime: shichenData?.hour ?? 12,
           birthMinute: 0,
-          birthCity: form.city,
+          // 当前位置时间（用于计算经度）
+          currentHour: parseInt(form.currentHour),
+          currentMinute: parseInt(form.currentMinute) || 0,
         }),
       });
 
@@ -121,7 +126,7 @@ export default function HomePage() {
   };
 
   const resetForm = () => {
-    setForm({ email: '', gender: '', year: '', month: '', day: '', shichen: '', city: '北京' });
+    setForm({ email: '', gender: '', year: '', month: '', day: '', shichen: '', currentHour: '', currentMinute: '' });
   };
 
   const inputCls =
@@ -386,19 +391,43 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Birth City */}
+            {/* Current Location Time (for timezone calculation) */}
             <div>
               <label className="block text-[#1A0F05]/60 text-xs tracking-widest mb-2">
-                出生城市 · Birth City
+                您现在几点？· Your Current Time
               </label>
-              <input
-                type="text"
-                placeholder="请输入出生城市，如：北京"
-                value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
-                className={inputCls}
-                required
-              />
+              <p className="text-[#1A0F05]/40 text-xs mb-3">
+                用于计算您所在地的真太阳时，让命盘更精准
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <select
+                    value={form.currentHour}
+                    onChange={(e) => setForm({ ...form, currentHour: e.target.value })}
+                    className={selectCls}
+                    required
+                  >
+                    <option value="">时</option>
+                    {hours.map((h) => (
+                      <option key={h} value={h}>{String(h).padStart(2, '0')} 时</option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#B8925A]/60 text-xs">▾</span>
+                </div>
+                <div className="relative">
+                  <select
+                    value={form.currentMinute}
+                    onChange={(e) => setForm({ ...form, currentMinute: e.target.value })}
+                    className={selectCls}
+                  >
+                    <option value="">分</option>
+                    {minutes.map((m) => (
+                      <option key={m} value={m}>{String(m).padStart(2, '0')} 分</option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#B8925A]/60 text-xs">▾</span>
+                </div>
+              </div>
             </div>
 
             {/* Price + Submit */}
@@ -500,7 +529,7 @@ export default function HomePage() {
                 onClick={() => {
                   setSubmitted(false);
                   setReportData(null);
-                  setForm({ email: '', gender: '', year: '', month: '', day: '', shichen: '', city: '北京' });
+                  setForm({ email: '', gender: '', year: '', month: '', day: '', shichen: '', currentHour: '', currentMinute: '' });
                   scrollToForm();
                 }}
                 className="text-xs tracking-widest text-[#B8925A] border-b border-[#B8925A]/40 pb-0.5 hover:border-[#B8925A] transition-colors duration-300"

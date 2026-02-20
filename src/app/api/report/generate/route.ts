@@ -1,6 +1,8 @@
 /**
  * 报告生成 API
  * POST /api/report/generate
+ *
+ * 用户输入当前位置时间，系统根据与北京时间的差异计算经度
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -11,7 +13,11 @@ import {
   GenerateReportInput,
 } from '@/lib/llm';
 import { prisma } from '@/lib/db';
-import { getCityByName } from '@/lib/location/cities';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const BEIJING_LONGITUDE = 120; // 东经120度 = 北京时间基准
+const HOURS_TO_DEGREES = 15; // 每1小时 = 15度经度
 
 // ─── Request Schema ────────────────────────────────────────────────────────────
 
@@ -21,7 +27,51 @@ interface GenerateRequest {
   birthDate: string; // YYYY-MM-DD
   birthTime: number; // 0-23
   birthMinute: number; // 0-59
-  birthCity: string;
+  // 新增：用户当前位置时间（用于计算时区偏移）
+  currentHour: number; // 0-23
+  currentMinute: number; // 0-59
+}
+
+// ─── Helper: Calculate Longitude from Time Difference ───────────────────────────
+
+/**
+ * 根据用户提供的当前时间计算经度
+ * 逻辑：用户时间 vs 北京时间 → 时差 → 经度偏移
+ */
+function calculateLongitudeFromTimeDiff(
+  userHour: number,
+  userMinute: number
+): number {
+  // 获取当前北京时间
+  const now = new Date();
+  const beijingHour = now.getHours();
+  const beijingMinute = now.getMinutes();
+
+  // 转换为分钟便于计算
+  const userTotalMinutes = userHour * 60 + userMinute;
+  const beijingTotalMinutes = beijingHour * 60 + beijingMinute;
+
+  // 计算时间差（分钟）
+  // 如果用户时间比北京时间大很多（比如用户填了23点但北京时间是1点）
+  // 可能是跨日的情况，需要处理
+  let timeDiffMinutes = userTotalMinutes - beijingTotalMinutes;
+
+  // 处理跨日情况：如果差值超过12小时，说明可能是跨日
+  if (timeDiffMinutes > 12 * 60) {
+    timeDiffMinutes -= 24 * 60; // 用户时间其实是前一天
+  } else if (timeDiffMinutes < -12 * 60) {
+    timeDiffMinutes += 24 * 60; // 用户时间其实是后一天
+  }
+
+  // 将时间差转换为经度偏移
+  // 每4分钟 = 1度经度
+  const longitudeOffset = timeDiffMinutes / 4;
+
+  // 计算实际经度
+  const longitude = BEIJING_LONGITUDE + longitudeOffset;
+
+  // 限制在合理范围内 (-180 到 180)
+  return Math.max(-180, Math.min(180, longitude));
 }
 
 // ─── POST Handler ──────────────────────────────────────────────────────────────
@@ -39,14 +89,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 获取城市经纬度
-    const city = getCityByName(body.birthCity);
-    if (!city) {
-      return NextResponse.json(
-        { error: `未找到城市: ${body.birthCity}` },
-        { status: 400 }
-      );
-    }
+    // 2. 根据用户当前时间计算经度
+    const longitude = calculateLongitudeFromTimeDiff(
+      body.currentHour,
+      body.currentMinute
+    );
 
     // 3. 生成命盘
     const astrolabe = generateAstrolabe({
@@ -54,9 +101,9 @@ export async function POST(request: NextRequest) {
       birthTime: body.birthTime,
       birthMinute: body.birthMinute,
       gender: body.gender,
-      longitude: city.longitude,
-      latitude: city.latitude,
-      birthCity: body.birthCity,
+      longitude,
+      latitude: 0, // 纬度对时辰计算影响较小
+      birthCity: `经度${longitude.toFixed(1)}°`,
     });
 
     // 4. 准备 LLM 输入
@@ -65,7 +112,7 @@ export async function POST(request: NextRequest) {
       gender: body.gender,
       birthDate: body.birthDate,
       birthTime: astrolabe.parsed.solarTime.shichen,
-      birthCity: body.birthCity,
+      birthCity: `东经${longitude.toFixed(1)}°`,
       mingGong: astrolabe.parsed.mingGong.majorStars.join('·') || '空宫',
       wuXingJu: astrolabe.parsed.wuXingJu,
       chineseZodiac: astrolabe.parsed.chineseZodiac,
@@ -87,8 +134,8 @@ export async function POST(request: NextRequest) {
         gender: body.gender,
         birthDate: body.birthDate,
         birthTime: body.birthTime,
-        birthCity: body.birthCity,
-        longitude: city.longitude,
+        birthCity: `经度${longitude.toFixed(1)}°`,
+        longitude,
         rawAstrolabe: JSON.stringify(astrolabe.raw),
         aiReport: reportResult.report,
         coreIdentity: reportResult.coreIdentity,
@@ -101,6 +148,7 @@ export async function POST(request: NextRequest) {
       reportId: report.id,
       coreIdentity: reportResult.coreIdentity,
       report: reportResult.report,
+      calculatedLongitude: longitude,
       astrolabe: {
         mingGong: astrolabe.parsed.mingGong,
         wuXingJu: astrolabe.parsed.wuXingJu,
@@ -138,12 +186,8 @@ function validateInput(body: GenerateRequest): string | null {
     return '请选择有效的出生时辰';
   }
 
-  if (typeof body.birthMinute !== 'number' || body.birthMinute < 0 || body.birthMinute > 59) {
-    return '请输入有效的出生分钟';
-  }
-
-  if (!body.birthCity) {
-    return '请选择出生城市';
+  if (typeof body.currentHour !== 'number' || body.currentHour < 0 || body.currentHour > 23) {
+    return '请输入当前小时';
   }
 
   return null;
