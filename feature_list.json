@@ -330,7 +330,7 @@
         "支付异常监控",
         "告警配置"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F026",
