@@ -294,6 +294,20 @@
     },
     {
       "id": "F023",
+      "category": "frontend",
+      "priority": 14,
+      "description": "命盘展示页面 - 传统12宫格布局",
+      "steps": [
+        "创建 /chart/[id] 路由",
+        "实现12宫格布局（巳午未申...）",
+        "SVG 装饰（太极、八卦、云纹）",
+        "宫位详细信息（主星、辅星、杂耀、12神、大限、小限）",
+        "旋转太极动画"
+      ],
+      "passes": true
+    },
+    {
+      "id": "F024",
       "category": "optimization",
       "priority": 15,
       "description": "性能优化",
@@ -306,7 +320,7 @@
       "passes": false
     },
     {
-      "id": "F024",
+      "id": "F025",
       "category": "monitoring",
       "priority": 16,
       "description": "错误监控与日志",
@@ -319,7 +333,7 @@
       "passes": false
     },
     {
-      "id": "F025",
+      "id": "F026",
       "category": "docs",
       "priority": 17,
       "description": "项目文档完善",
