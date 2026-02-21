@@ -107,8 +107,8 @@ async function getCachedReport(body: GenerateRequest): Promise<{
         report: {
           id: cached.id,
           coreIdentity: cached.coreIdentity || '',
-          aiReport: cached.aiReport,
-          rawAstrolabe: cached.rawAstrolabe,
+          aiReport: cached.aiReport || '',
+          rawAstrolabe: cached.rawAstrolabe || '{}',
         },
       };
     }
