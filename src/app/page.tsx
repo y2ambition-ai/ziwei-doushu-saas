@@ -475,14 +475,8 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Price + Submit */}
+            {/* Submit */}
             <div className="pt-4">
-              <div className="flex items-center justify-between mb-4 px-1">
-                <span className="text-[#1A0F05]/50 text-xs tracking-wider">本次命理推算费用</span>
-                <span className="text-[#1A0F05] text-2xl font-light font-[family-name:var(--font-display)]">
-                  $1.99 <span className="text-xs text-[#1A0F05]/40">USD</span>
-                </span>
-              </div>
               <button
                 type="submit"
                 disabled={loading}
@@ -503,7 +497,11 @@ export default function HomePage() {
                     </span>
                   </>
                 ) : (
-                  '开启命理推算'
+                  <>
+                    开启命理推算
+                    <span className="text-[#B8925A]">·</span>
+                    <span className="text-[#B8925A]">FREE</span>
+                  </>
                 )}
               </button>
               <p className="text-center text-[#1A0F05]/30 text-xs mt-3 tracking-wide">
