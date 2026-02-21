@@ -9,7 +9,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateReport, generateMockReport } from '@/lib/llm';
 import { prisma } from '@/lib/db';
 import { generateAstrolabe } from '@/lib/ziwei/wrapper';
-import { sendReportEmail } from '@/lib/email';
 import { captureAIGenerationError, captureApiError } from '@/lib/monitoring';
 
 // ─── POST Handler ──────────────────────────────────────────────────────────────
@@ -96,35 +95,23 @@ export async function POST(request: NextRequest) {
       throw aiError;
     }
 
-    // 6. 更新数据库（设置 paidAt 表示已付费/已生成AI报告）
+    // 6. 更新数据库（设置 paidAt 表示已生成AI报告）
     await prisma.report.update({
       where: { id: reportId },
       data: {
         aiReport: reportResult.report,
         coreIdentity: reportResult.coreIdentity,
-        paidAt: new Date(), // 标记为已付费，用于7天免费复用判断
+        paidAt: new Date(), // 标记为已生成，用于7天免费复用判断
       },
     });
 
-    // 7. 发送邮件（异步执行，不阻塞响应）
-    sendReportEmail({
-      to: report.email,
-      reportId: reportId,
-      coreIdentity: reportResult.coreIdentity,
-    }).then((result) => {
-      if (result.success) {
-        console.log('Report email sent successfully to:', report.email);
-      } else {
-        console.error('Failed to send report email:', result.error);
-      }
-    });
+    // 7. 不发送邮件，仅网页端查看（数据7天后自动删除）
 
     return NextResponse.json({
       success: true,
       cached: false,
       coreIdentity: reportResult.coreIdentity,
       report: reportResult.report,
-      emailSent: true,
     });
   } catch (error) {
     console.error('AI report generation error:', error);

@@ -2,7 +2,8 @@
  * Stripe Checkout Session API
  * POST /api/checkout
  *
- * 支持7天内免费复用：同一邮箱+相同参数，7天内不需要重复付费
+ * 支持7天内免费复用：同一邮箱+相同参数，7天内直接查看已有结果
+ * 注意：免费复用时不会重新生成报告，不会发送邮件
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -31,11 +32,14 @@ interface CheckoutRequest {
 // ─── Helper: Check 7-day free reuse ───────────────────────────────────────────
 
 /**
- * 检查是否有7天内已付费的相同参数报告
+ * 检查是否有7天内已生成AI报告的相同参数报告
+ * 注意：只是查找已有结果，不会重新调用API或发邮件
  */
 async function getValidPaidReport(body: CheckoutRequest): Promise<{
   found: boolean;
   reportId?: string;
+  aiReport?: string;
+  coreIdentity?: string;
   daysRemaining?: number;
 }> {
   try {
@@ -59,7 +63,7 @@ async function getValidPaidReport(body: CheckoutRequest): Promise<{
       },
     });
 
-    if (paidReport && paidReport.paidAt) {
+    if (paidReport && paidReport.paidAt && paidReport.aiReport) {
       const daysRemaining = Math.ceil(
         (FREE_REUSE_DAYS * 24 * 60 * 60 * 1000 - (Date.now() - paidReport.paidAt.getTime())) /
         (24 * 60 * 60 * 1000)
@@ -67,6 +71,8 @@ async function getValidPaidReport(body: CheckoutRequest): Promise<{
       return {
         found: true,
         reportId: paidReport.id,
+        aiReport: paidReport.aiReport,
+        coreIdentity: paidReport.coreIdentity || '',
         daysRemaining: Math.max(0, daysRemaining),
       };
     }
@@ -91,7 +97,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. 检查7天内是否有相同参数的已付费报告
+    // 1. 检查7天内是否有相同参数的已有AI报告（免费复用，不发邮件）
     const validPaid = await getValidPaidReport(body);
     if (validPaid.found && validPaid.reportId) {
       console.log('Found valid paid report for:', body.email, 'days remaining:', validPaid.daysRemaining);
@@ -99,12 +105,14 @@ export async function POST(request: NextRequest) {
         success: true,
         freeReuse: true,
         reportId: validPaid.reportId,
+        aiReport: validPaid.aiReport,
+        coreIdentity: validPaid.coreIdentity,
         daysRemaining: validPaid.daysRemaining,
-        message: `您在${validPaid.daysRemaining}天内已购买过相同参数的解读，本次免费查看`,
+        message: `您在${validPaid.daysRemaining}天内已生成过相同参数的解读，本次免费查看`,
       });
     }
 
-    // 2. 没有有效报告，需要付费
+    // 2. 没有有效报告，需要生成新的AI解读
     // Check if we have Stripe key (production mode)
     const hasStripeKey = process.env.STRIPE_SECRET_KEY &&
       process.env.STRIPE_SECRET_KEY !== 'sk_test_mock';

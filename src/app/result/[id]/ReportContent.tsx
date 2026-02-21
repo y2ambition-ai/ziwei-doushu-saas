@@ -141,7 +141,6 @@ export default function ReportContent({ report }: ReportContentProps) {
   const [coreIdentity, setCoreIdentity] = useState(report.coreIdentity);
   const [loading, setLoading] = useState(!report.aiReport || report.aiReport.length < 100);
   const [error, setError] = useState<string | null>(null);
-  const [emailSent, setEmailSent] = useState(false);
 
   // 如果没有AI报告，自动请求生成
   useEffect(() => {
@@ -169,7 +168,6 @@ export default function ReportContent({ report }: ReportContentProps) {
 
       setAiReport(data.report);
       setCoreIdentity(data.coreIdentity);
-      setEmailSent(data.emailSent || false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'AI报告生成失败');
     } finally {
@@ -241,19 +239,6 @@ export default function ReportContent({ report }: ReportContentProps) {
             </motion.div>
           ) : (
             <>
-              {/* Email Sent Notice */}
-              {emailSent && (
-                <motion.div
-                  className="mb-6 p-4 bg-[#B8925A]/10 border border-[#B8925A]/20 text-center"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <p className="text-sm text-[#1A0F05]/70">
-                    <span className="text-[#B8925A]">✓</span> 报告已发送至您的邮箱 <strong>{report.email}</strong>
-                  </p>
-                </motion.div>
-              )}
-
               {/* Core Identity Card */}
               <motion.div
                 className="mb-10 p-8 bg-[#1A0F05] text-[#F7F3EC] text-center"
@@ -309,7 +294,7 @@ export default function ReportContent({ report }: ReportContentProps) {
           {/* Disclaimer */}
           <div className="mt-12 pt-8 border-t border-[#B8925A]/10">
             <p className="text-center text-[#1A0F05]/30 text-xs leading-relaxed tracking-wide">
-              本报告基于紫微斗数命理分析，仅供参考。命运掌握在自己手中，愿您前程似锦！
+              本报告基于紫微斗数命理分析，仅供参考。本网站不保留任何个人信息，数据仅储存7天后自动删除。
             </p>
           </div>
         </motion.div>

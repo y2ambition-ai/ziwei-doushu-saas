@@ -363,12 +363,14 @@ function PalaceCell({ palace, isCenter, astrolabe }: {
 export default function ChartDisplay({ report }: ChartDisplayProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [freeReuseMessage, setFreeReuseMessage] = useState<string | null>(null);
   const astrolabe = report.rawAstrolabe;
   const palaces = astrolabe?.palaces || [];
 
   // 获取大师解读
   const handleGetReading = async () => {
     setLoading(true);
+    setFreeReuseMessage(null);
     try {
       const response = await fetch('/api/checkout', {
         method: 'POST',
@@ -387,8 +389,11 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
       const data = await response.json();
 
       if (data.freeReuse && data.reportId) {
-        // 7天内免费复用，直接跳转
-        router.push(`/result/${data.reportId}`);
+        // 7天内免费复用，显示提示后跳转
+        setFreeReuseMessage(`您在${data.daysRemaining}天内已生成过相同参数的解读，正在为您跳转...`);
+        setTimeout(() => {
+          router.push(`/result/${data.reportId}`);
+        }, 1500);
       } else if (data.url) {
         // 需要付费，跳转到 Stripe
         window.location.href = data.url;
@@ -635,13 +640,16 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
                 <p className="text-sm mb-3 text-[#1A0F05]/80 max-w-md mx-auto leading-relaxed">
                   我们搭建了<span className="text-[#8B4513] font-medium">专属命理知识库</span>，汇聚<span className="text-[#8B4513] font-medium">30余位道教大师</span>毕生智慧
                 </p>
-                <p className="text-xs mb-4 text-[#1A0F05]/50 max-w-md mx-auto">
-                  解读报告将通过<span className="text-[#B8925A]">网页</span>及<span className="text-[#B8925A]">邮件</span>发送给您
-                </p>
-                {/* 7天免费复用提示 */}
+                {/* 7天免费复用 + 数据保留说明 */}
                 <p className="text-[10px] mb-4 text-[#8B4513]/70 max-w-md mx-auto">
-                  同一邮箱、相同参数 7 天内免费复用
+                  同一邮箱、相同参数 7 天内免费复用 · 数据仅保留 7 天后自动删除
                 </p>
+                {/* 免费复用提示消息 */}
+                {freeReuseMessage && (
+                  <p className="text-xs mb-4 text-[#8B4513] max-w-md mx-auto animate-pulse">
+                    {freeReuseMessage}
+                  </p>
+                )}
                 <button
                   onClick={handleGetReading}
                   disabled={loading}
@@ -694,8 +702,8 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
 
           {/* Disclaimer - 打印时隐藏 */}
           <div className="no-print mt-10 pt-6 border-t border-[#B8925A]/10">
-            <p className="text-center text-[#1A0F05]/25 text-xs tracking-wide whitespace-nowrap">
-              本命盘基于紫微斗数排盘算法生成，仅供参考。命理分析需结合多种因素综合判断。
+            <p className="text-center text-[#1A0F05]/25 text-xs tracking-wide leading-relaxed">
+              本命盘基于紫微斗数排盘算法生成，仅供参考。本网站不保留任何个人信息，数据仅储存7天后自动删除。
             </p>
           </div>
         </motion.div>
