@@ -116,12 +116,35 @@ function Divider() {
 // ─── Helper Functions ───────────────────────────────────────────────────────────
 
 function getShichenName(hour: number): string {
+  // hour 是 0-23，需要转换为 0-11 的时辰索引
+  // 子时(23:00-01:00) -> 0, 丑时(01:00-03:00) -> 1, ...
   const shichenMap: Record<number, string> = {
     0: '子时', 1: '丑时', 2: '寅时', 3: '卯时',
     4: '辰时', 5: '巳时', 6: '午时', 7: '未时',
     8: '申时', 9: '酉时', 10: '戌时', 11: '亥时',
   };
-  return shichenMap[hour] || '未知';
+  // 23点归为子时(0)，其他 hour/2 向下取整
+  const shichenIndex = hour === 23 ? 0 : Math.floor((hour + 1) / 2);
+  return shichenMap[shichenIndex] || '未知';
+}
+
+function getWesternZodiac(birthDate: string): string {
+  const date = new Date(birthDate);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return '白羊座';
+  if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return '金牛座';
+  if ((month === 5 && day >= 21) || (month === 6 && day <= 21)) return '双子座';
+  if ((month === 6 && day >= 22) || (month === 7 && day <= 22)) return '巨蟹座';
+  if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return '狮子座';
+  if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return '处女座';
+  if ((month === 9 && day >= 23) || (month === 10 && day <= 23)) return '天秤座';
+  if ((month === 10 && day >= 24) || (month === 11 && day <= 22)) return '天蝎座';
+  if ((month === 11 && day >= 23) || (month === 12 && day <= 21)) return '射手座';
+  if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return '摩羯座';
+  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return '水瓶座';
+  return '双鱼座';
 }
 
 function getPalaceByBranch(palaces: PalaceData[], branch: string): PalaceData | null {
@@ -176,9 +199,13 @@ function PalaceCell({ palace, isCenter, astrolabe }: {
 
         {/* 中心内容 */}
         <div className="relative z-10 text-center">
-          <div className="mb-3">
-            <TaiChiSymbol className="w-10 h-10 mx-auto text-[#B8925A]" />
-          </div>
+          <motion.div
+            className="mb-3"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+          >
+            <TaiChiSymbol className="w-12 h-12 md:w-16 md:h-16 mx-auto text-[#B8925A]" />
+          </motion.div>
           <p className="text-[#B8925A] text-[10px] tracking-[0.3em] mb-2">紫微斗數</p>
           <p className="text-base md:text-lg mb-1">{astrolabe?.gender === '男' ? '男命' : '女命'}</p>
           <p className="text-xs text-[#F7F3EC]/60">{astrolabe?.lunarDate || ''}</p>
@@ -405,15 +432,15 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
               </div>
               <div className="p-3 text-center border-r border-[#B8925A]/10">
                 <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">生肖</p>
-                <p className="text-[#1A0F05] font-medium text-sm">{astrolabe?.chineseZodiac || '-'}</p>
+                <p className="text-[#1A0F05] font-medium text-sm">{astrolabe?.chineseZodiac || astrolabe?.zodiac || '-'}</p>
               </div>
               <div className="p-3 text-center border-r border-[#B8925A]/10">
                 <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">星座</p>
-                <p className="text-[#1A0F05] font-medium text-sm">{astrolabe?.zodiac || '-'}</p>
+                <p className="text-[#1A0F05] font-medium text-sm">{getWesternZodiac(report.birthDate)}</p>
               </div>
               <div className="p-3 text-center border-r border-t md:border-t-0 border-[#B8925A]/10">
                 <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">五行局</p>
-                <p className="text-[#1A0F05] font-medium text-sm">{astrolabe?.fiveElementsClass || '-'}</p>
+                <p className="text-[#1A0F05] font-medium text-sm">{astrolabe?.fiveElementsClass || astrolabe?.fiveElementsClass || '-'}</p>
               </div>
               <div className="p-3 text-center border-r border-t md:border-t-0 border-[#B8925A]/10">
                 <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">阳历</p>
