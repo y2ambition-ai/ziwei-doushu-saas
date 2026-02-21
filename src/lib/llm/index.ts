@@ -159,6 +159,9 @@ export async function generateReport(
   const userPrompt = buildUserPrompt(input);
 
   try {
+    console.log('Calling LLM API with model:', model);
+    console.log('API Key exists:', !!process.env.DOUBAO_API_KEY);
+
     const response = await client.chat.completions.create({
       model,
       messages: [
@@ -187,7 +190,11 @@ export async function generateReport(
     };
   } catch (error) {
     console.error('LLM API Error:', error);
-    throw new Error('AI 报告生成失败，请稍后重试');
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    throw new Error(`AI 报告生成失败: ${error instanceof Error ? error.message : '未知错误'}`);
   }
 }
 
