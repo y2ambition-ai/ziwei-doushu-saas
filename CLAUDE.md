@@ -78,10 +78,12 @@ pnpm build
 
 ## 当前状态
 
-**进度**: 19 / 25 功能完成 (76%)
-**当前分支**: feature-saas-architecture
-**最后会话**: Phase 1-5 完成，核心 SaaS 功能已实现
-**下一步**: Phase 6 - 生产部署配置
+**进度**: 21 / 25 功能完成 (84%)
+**当前分支**: main
+**生产地址**: https://ziwei-doushu-saas.vercel.app
+**GitHub**: https://github.com/y2ambition-ai/ziwei-doushu-saas
+**最后会话**: 2026-02-21 - Vercel 部署成功 + 表单验证优化
+**下一步**: 配置 API Keys (Stripe/豆包/Resend) + 创建数据库
 
 ### 已完成功能
 
@@ -92,18 +94,19 @@ pnpm build
 
 - ✅ Phase 2: 核心引擎 (F004-F008)
   - 真太阳时计算
-  - 城市经纬度数据库
+  - 城市经纬度数据库（改为时间输入法）
   - iztro 排盘引擎封装
   - 测试验证通过
 
 - ✅ Phase 3: LLM 集成 (F009-F011)
   - 火山引擎豆包 API 集成
   - Prompt Engineering
-  - 报告生成 API
+  - 报告生成 API（完整命盘格式化）
 
 - ✅ Phase 4: 前端 (F012-F013)
   - 落地页表单组件
   - 东方禅意 UI 迁移
+  - 字段级验证 + 红色提示
 
 - ✅ Phase 5: 支付 & 邮件 (F014-F019)
   - Stripe Checkout 集成
@@ -111,14 +114,25 @@ pnpm build
   - 报告结果页面
   - Resend 邮件服务
 
+- ✅ Phase 6: 生产部署 (F020-F021)
+  - 环境变量模板 (.env.example)
+  - Vercel CLI 部署成功
+  - vercel.json 配置
+
 ### 待完成功能
 
-- ⏳ F020: 环境变量与安全配置
-- ⏳ F021: Vercel 部署配置
 - ⏳ F022: 端到端测试
 - ⏳ F023: 性能优化
 - ⏳ F024: 错误监控与日志
 - ⏳ F025: 项目文档完善
+
+### 本会话新增
+
+1. **iztro 库验证**: 确认数据完整，包含十二宫、长生12神、博士12神、三方四正等
+2. **命盘格式化函数**: `formatAstrolabeForLLM()` 生成完整命盘文本发送给 LLM
+3. **时间输入法**: 用"当前时间"替代"出生城市"计算经度，保护隐私
+4. **表单验证优化**: 字段级红色提示 + 自动滚动定位
+5. **Vercel 部署**: CLI 方式成功部署到生产环境
 
 ### 关键技术决策
 

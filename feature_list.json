@@ -264,7 +264,7 @@
         "Stripe Webhook Secret",
         "数据库连接串加密"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F021",
@@ -277,7 +277,7 @@
         "配置域名",
         "部署成功"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F022",
