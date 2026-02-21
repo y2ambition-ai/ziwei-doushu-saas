@@ -10,6 +10,7 @@ import { generateReport, generateMockReport } from '@/lib/llm';
 import { prisma } from '@/lib/db';
 import { generateAstrolabe } from '@/lib/ziwei/wrapper';
 import { sendReportEmail } from '@/lib/email';
+import { captureAIGenerationError, captureApiError } from '@/lib/monitoring';
 
 // ─── POST Handler ──────────────────────────────────────────────────────────────
 
@@ -78,12 +79,21 @@ export async function POST(request: NextRequest) {
     const hasApiKey = process.env.DOUBAO_API_KEY && process.env.DOUBAO_API_KEY.length > 0;
 
     let reportResult;
-    if (hasApiKey) {
-      console.log('Calling Doubao API for AI report...');
-      reportResult = await generateReport(llmInput);
-    } else {
-      console.log('No API key, using mock report');
-      reportResult = generateMockReport(llmInput);
+    try {
+      if (hasApiKey) {
+        console.log('Calling Doubao API for AI report...');
+        reportResult = await generateReport(llmInput);
+      } else {
+        console.log('No API key, using mock report');
+        reportResult = generateMockReport(llmInput);
+      }
+    } catch (aiError) {
+      // 捕获 AI 生成错误
+      captureAIGenerationError(aiError, {
+        reportId,
+        email: report.email,
+      });
+      throw aiError;
     }
 
     // 6. 更新数据库
@@ -117,6 +127,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('AI report generation error:', error);
+    captureApiError(error, {
+      endpoint: '/api/report/ai-generate',
+      method: 'POST',
+    });
     const errorMessage = error instanceof Error ? error.message : '未知错误';
     return NextResponse.json(
       { error: `AI报告生成失败: ${errorMessage}` },

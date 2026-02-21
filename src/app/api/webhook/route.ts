@@ -10,6 +10,7 @@ import { generateAstrolabe } from '@/lib/ziwei/wrapper';
 import { generateReport, generateMockReport, GenerateReportInput } from '@/lib/llm';
 import { prisma } from '@/lib/db';
 import { getCityByName } from '@/lib/location/cities';
+import { capturePaymentError, captureApiError } from '@/lib/monitoring';
 
 // ─── POST Handler ──────────────────────────────────────────────────────────────
 
@@ -52,8 +53,18 @@ export async function POST(request: NextRequest) {
       }
 
       case 'payment_intent.payment_failed': {
-        // Payment failed
-        console.log('PaymentIntent failed:', event.data.object);
+        // Payment failed - 上报到 Sentry
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        console.log('PaymentIntent failed:', paymentIntent);
+        capturePaymentError(
+          new Error('Payment failed'),
+          {
+            paymentIntentId: paymentIntent.id,
+            customerId: paymentIntent.customer as string | undefined,
+            amount: paymentIntent.amount,
+            currency: paymentIntent.currency,
+          }
+        );
         break;
       }
 
@@ -64,6 +75,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error('Webhook error:', error);
+    captureApiError(error, {
+      endpoint: '/api/webhook',
+      method: 'POST',
+    });
     return NextResponse.json(
       { error: 'Webhook handler failed' },
       { status: 500 }

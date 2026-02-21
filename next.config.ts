@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   images: {
@@ -49,4 +50,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry 配置（仅在配置了 DSN 时启用）
+const sentryConfig = withSentryConfig(nextConfig, {
+  // 静默警告
+  silent: true,
+  // 组织和项目
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // 自动上传 source maps（需要 SENTRY_AUTH_TOKEN）
+  widenClientFileUpload: true,
+  // Source maps 配置
+  sourcemaps: {
+    disable: false,
+  },
+});
+
+// 导出：如果有 Sentry DSN 则使用 Sentry 配置，否则使用原始配置
+export default process.env.NEXT_PUBLIC_SENTRY_DSN ? sentryConfig : nextConfig;
