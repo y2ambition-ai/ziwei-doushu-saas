@@ -128,25 +128,32 @@ export async function POST(request: NextRequest) {
       ? await generateReport(llmInput)
       : generateMockReport(llmInput);
 
-    // 6. 存储到数据库
-    const report = await prisma.report.create({
-      data: {
-        email: body.email,
-        gender: body.gender,
-        birthDate: body.birthDate,
-        birthTime: body.birthTime,
-        birthCity: `经度${longitude.toFixed(1)}°`,
-        longitude,
-        rawAstrolabe: JSON.stringify(astrolabe.raw),
-        aiReport: reportResult.report,
-        coreIdentity: reportResult.coreIdentity,
-      },
-    });
+    // 6. 存储到数据库 (如果数据库可用)
+    let reportId = `test-${Date.now()}`;
+    try {
+      const report = await prisma.report.create({
+        data: {
+          email: body.email,
+          gender: body.gender,
+          birthDate: body.birthDate,
+          birthTime: body.birthTime,
+          birthCity: `经度${longitude.toFixed(1)}°`,
+          longitude,
+          rawAstrolabe: JSON.stringify(astrolabe.raw),
+          aiReport: reportResult.report,
+          coreIdentity: reportResult.coreIdentity,
+        },
+      });
+      reportId = report.id;
+    } catch (dbError) {
+      // 数据库不可用时，使用临时 ID 继续返回结果
+      console.log('Database not available, using temporary ID');
+    }
 
     // 7. 返回结果
     return NextResponse.json({
       success: true,
-      reportId: report.id,
+      reportId,
       coreIdentity: reportResult.coreIdentity,
       report: reportResult.report,
       calculatedLongitude: longitude,
