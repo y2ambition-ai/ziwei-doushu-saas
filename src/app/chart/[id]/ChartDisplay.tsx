@@ -433,7 +433,7 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
       </header>
 
       {/* Main Content */}
-      <main className="relative max-w-6xl mx-auto py-12 px-4 md:px-8">
+      <main className="print-chart relative max-w-6xl mx-auto py-12 px-4 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -544,9 +544,9 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
             </div>
           </motion.div>
 
-          {/* 图例说明 */}
+          {/* 图例说明 - 打印时隐藏 */}
           <motion.div
-            className="mt-6 p-4 bg-[#1A0F05]/5 text-center"
+            className="no-print mt-6 p-4 bg-[#1A0F05]/5 text-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.5 }}
@@ -575,9 +575,9 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
             </div>
           </motion.div>
 
-          {/* 获取命理解读 - 温暖金色系 */}
+          {/* 获取命理解读 - 温暖金色系 - 打印时隐藏 */}
           <motion.div
-            className="mt-10 text-center"
+            className="no-print mt-10 text-center"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.6 }}
@@ -614,8 +614,8 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
             </div>
           </motion.div>
 
-          {/* Actions */}
-          <div className="mt-8 flex flex-col md:flex-row items-center justify-center gap-4">
+          {/* Actions - 打印时隐藏 */}
+          <div className="no-print mt-8 flex flex-col md:flex-row items-center justify-center gap-4">
             <Link
               href="/"
               className="text-xs tracking-[0.15em] px-6 py-3 border border-[#B8925A] text-[#B8925A]
@@ -632,8 +632,8 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
             </button>
           </div>
 
-          {/* Disclaimer */}
-          <div className="mt-10 pt-6 border-t border-[#B8925A]/10">
+          {/* Disclaimer - 打印时隐藏 */}
+          <div className="no-print mt-10 pt-6 border-t border-[#B8925A]/10">
             <p className="text-center text-[#1A0F05]/25 text-xs tracking-wide whitespace-nowrap">
               本命盘基于紫微斗数排盘算法生成，仅供参考。命理分析需结合多种因素综合判断。
             </p>

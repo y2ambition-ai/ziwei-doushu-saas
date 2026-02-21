@@ -56,18 +56,54 @@ body {
 /* ─── 打印样式 ─────────────────────────────────────────────────────────────────── */
 
 @media print {
-  body {
-    background: white !important;
+  /* A4 纸张设置 */
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
   }
 
-  nav, footer, button, .no-print {
+  html, body {
+    width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    font-size: 10px !important;
+    overflow: visible !important;
+  }
+
+  /* 隐藏不需要打印的元素 */
+  nav, footer, header, button, .no-print,
+  [class*="motion"]:not(.print-keep),
+  a[href^="/"] {
     display: none !important;
   }
 
-  /* 打印时显示链接 URL */
+  /* 打印时保留链接但不显示URL */
+  a {
+    text-decoration: none !important;
+  }
   a[href^="http"]::after {
-    content: " (" attr(href) ")";
-    font-size: 0.8em;
-    color: #666;
+    display: none !important;
+  }
+
+  /* 命盘页面打印优化 */
+  .print-chart {
+    width: 190mm !important;
+    max-width: 190mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+  }
+
+  /* 缩放整个页面以适应A4 */
+  body > * {
+    transform: scale(0.85) !important;
+    transform-origin: top center !important;
+  }
+
+  /* 强制单页打印 */
+  .page-break-avoid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }
