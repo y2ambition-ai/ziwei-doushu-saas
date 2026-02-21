@@ -1,13 +1,14 @@
 // Prisma Schema for ZiWei SaaS
-// Using SQLite for local development
+// Supports both SQLite (local) and PostgreSQL (production)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
 }
 
 model Customer {
