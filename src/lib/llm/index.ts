@@ -55,6 +55,9 @@ function createClient(config: LLMConfig = {}): OpenAI {
   return new OpenAI({
     apiKey,
     baseURL,
+    // 添加超时和重试配置
+    timeout: 60000,
+    maxRetries: 2,
   });
 }
 
@@ -153,26 +156,48 @@ export async function generateReport(
   input: GenerateReportInput,
   config: LLMConfig = {}
 ): Promise<GenerateReportOutput> {
-  const client = createClient(config);
   const model = config.model || process.env.DOUBAO_MODEL || DEFAULT_MODEL;
+  const apiKey = config.apiKey || process.env.DOUBAO_API_KEY || '';
+  const baseURL = config.baseURL || process.env.DOUBAO_BASE_URL || DEFAULT_BASE_URL;
 
   const userPrompt = buildUserPrompt(input);
 
   try {
     console.log('Calling LLM API with model:', model);
-    console.log('API Key exists:', !!process.env.DOUBAO_API_KEY);
+    console.log('API Key exists:', !!apiKey);
+    console.log('Base URL:', baseURL);
 
-    const response = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt },
-      ],
-      max_tokens: 4096,
-      temperature: 0.7,
+    // 使用原生 fetch 调用，更可控
+    const response = await fetch(`${baseURL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt },
+        ],
+        max_tokens: 4096,
+        temperature: 0.7,
+      }),
     });
 
-    const content = response.choices[0]?.message?.content || '';
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Response Error:', response.status, errorText);
+      throw new Error(`API 返回错误 ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    if (!content) {
+      console.error('Empty response from API:', JSON.stringify(data));
+      throw new Error('API 返回空内容');
+    }
 
     // 提取核心身份（第一个段落或前100字）
     const coreIdentityMatch = content.match(/核心身份[：:]\s*([^\n]+)/);
