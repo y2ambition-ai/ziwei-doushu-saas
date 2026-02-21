@@ -83,16 +83,27 @@ You are writing for a GLOBAL audience - people from all cultures who may be unfa
 - End each section with actionable advice
 - Maintain a tone of wisdom, compassion, and hope
 
-## Structure Your Reading
+## Structure Your Reading (12 Sections)
 
+### Part 1: Foundation (基础解读)
 1. **Core Identity (核心身份)** - A powerful 80-100 character summary
 2. **Your Cosmic Blueprint (你的命盘蓝图)** - Explain their unique chart configuration
 3. **Life Path & Destiny (人生道路)** - Overall life direction and themes
 4. **Career & Wealth (事业财运)** - Professional strengths and financial patterns
 5. **Relationships & Love (感情姻缘)** - Love style and partnership dynamics
 6. **Health & Wellbeing (健康养生)** - Physical and energetic considerations
-7. **Key Life Phases (人生阶段)** - Important timing and turning points
-8. **Guidance & Wisdom (指引与建议)** - Practical advice for thriving
+
+### Part 2: Year Ahead Forecast (未来一年运势) - PREMIUM CONTENT
+7. **Annual Fortune (年度运势总览)** - Overall energy for the current year based on their chart
+8. **Monthly Breakdown (月度运势)** - Which months are favorable, which need caution
+9. **Lucky Elements (幸运元素)** - Their personal lucky colors, numbers, directions for this year
+10. **Caution Areas (注意事项)** - Specific areas requiring attention
+11. **Pitfalls to Avoid (规避问题)** - What to avoid this year
+12. **Success Strategies (顺遂之道)** - Practical advice for a smooth year
+
+## Premium Content Guidelines
+
+For the Year Ahead section, draw from your knowledge of Zi Wei Dou Shu to provide personalized predictions based on their chart. Be specific but let your expertise guide the content - don't follow a template.
 
 ## Language Guidelines
 
@@ -100,7 +111,7 @@ You are writing for a GLOBAL audience - people from all cultures who may be unfa
 - Add English translations for key terms in parentheses
 - Use clear, flowing prose - avoid overly mystical language
 - Make it feel personal, not generic
-- Length: 2500-3500 Chinese characters`;
+- Length: 4000-5000 Chinese characters (comprehensive reading)`;
 
 // ─── User Prompt Template ──────────────────────────────────────────────────────
 
@@ -155,15 +166,29 @@ ${astrolabeData}
 
 ## Output Requirements
 
-1. **First**: Provide a "Core Identity" (核心身份) summary in 80-100 Chinese characters - this captures their essence in one powerful statement
+### Part 1: Foundation Reading (基础解读)
+1. **Core Identity (核心身份)** - A powerful 80-100 character summary
+2. **Your Cosmic Blueprint (你的命盘蓝图)** - Chart configuration
+3. **Life Path & Destiny (人生道路)** - Life direction
+4. **Career & Wealth (事业财运)** - Career and money
+5. **Relationships & Love (感情姻缘)** - Love and partnerships
+6. **Health & Wellbeing (健康养生)** - Health guidance
 
-2. **Then**: Write a detailed reading following the structure in your system prompt
+### Part 2: Current Year Forecast (当年运势) - PREMIUM CONTENT
+7. **Annual Fortune (年度运势总览)** - Overall energy for the current year based on their chart
+8. **Monthly Breakdown (月度运势)** - Which months are favorable, which need caution
+9. **Lucky Elements (幸运元素)** - Their personal lucky colors, numbers, directions for this year
+10. **Caution Areas (注意事项)** - Specific areas requiring attention
+11. **Pitfalls to Avoid (规避问题)** - What to avoid this year
+12. **Success Strategies (顺遂之道)** - Practical advice for a smooth year
 
-3. **Format**: Use Markdown with clear headers
+### Format & Tone
+- Use Markdown with clear section headers
+- Be specific and practical - give actionable advice
+- Warm, wise, empowering tone
+- Bilingual for key terms
 
-4. **Tone**: Warm, wise, empowering - like an elder sharing ancient wisdom with deep care
-
-Remember: This person may be from any culture. Explain concepts clearly and make the reading feel personally meaningful to them.`;
+Remember: This is a PREMIUM reading. The person has paid for this service. Make the Year Ahead section especially detailed, specific, and valuable.`;
 }
 
 function getShichenName(hour: number): string {
@@ -268,9 +293,15 @@ export async function generateReport(
 
 // ─── Mock Function for Development ─────────────────────────────────────────────
 
+// 获取当前年份的辅助函数
+function getCurrentYear(): number {
+  return new Date().getFullYear();
+}
+
 export function generateMockReport(input: GenerateReportInput): GenerateReportOutput {
   const shichenName = getShichenName(input.birthTime);
   const genderCn = input.gender === 'male' ? '男' : '女';
+  const currentYear = getCurrentYear(); // 动态获取当前年份
 
   const coreIdentity = `命宫${input.mingGong}坐守，五行属${input.wuXingJu}，天生具备独特的领导魅力与直觉力，人生注定不凡。`;
 
@@ -398,6 +429,165 @@ In relationships, you seek deep spiritual connection beyond surface attraction.
 | 50岁+ | 智慧期 Wisdom | 传承经验，回馈社会 |
 
 **关键转折点 Key Turning Point**: 35岁左右有重要的人生机遇，请做好准备。
+
+---
+
+# 🌟 ${currentYear}年运势 · Year Ahead ${currentYear} 🌟
+
+> 以下是基于您命盘推算的${currentYear}年专属运势，包含幸运元素、注意事项和顺遂之道。
+> The following is your personalized ${currentYear} forecast based on your Zi Wei Dou Shu chart.
+
+---
+
+## ${currentYear}年运势总览 · Annual Fortune Overview
+
+${currentYear}年对您而言是**稳中有进、蓄势待发**的一年。这一年您会感受到内在能量的增强，是打好基础、为未来铺路的好时机。
+
+**年度关键词 Keywords**: 稳健 Steady · 突破 Breakthrough · 人脉 Connections
+
+### 各领域运势 (Fortune by Area)
+
+| 领域 Area | 星级 Rating | 简评 Summary |
+|-----------|-------------|--------------|
+| 事业 Career | ⭐⭐⭐⭐ | 有贵人相助，适合推进重要项目 |
+| 财运 Wealth | ⭐⭐⭐ | 正财稳定，投资需谨慎 |
+| 感情 Love | ⭐⭐⭐⭐ | 有望遇到心仪对象，已婚者感情升温 |
+| 健康 Health | ⭐⭐⭐ | 注意休息，避免过度劳累 |
+
+---
+
+## 月度运势 · Monthly Highlights
+
+| 月份 Month | 运势 Fortune | 重点提示 Key Focus |
+|------------|--------------|-------------------|
+| 1月 Jan | ⭐⭐⭐ | 新年开局平稳，适合规划全年 |
+| 2月 Feb | ⭐⭐⭐⭐ | 春节期间贵人运旺，把握社交机会 |
+| 3月 Mar | ⭐⭐⭐ | 工作忙碌，注意劳逸结合 |
+| 4月 Apr | ⭐⭐⭐⭐ | 事业有突破机会，积极争取 |
+| 5月 May | ⭐⭐⭐⭐⭐ | **最佳月份** 贵人相助，大胆行动 |
+| 6月 Jun | ⭐⭐⭐ | 财运回升，可做小额投资 |
+| 7月 Jul | ⭐⭐ | 注意人际沟通，避免口舌是非 |
+| 8月 Aug | ⭐⭐⭐ | 稳定发展，积累能量 |
+| 9月 Sep | ⭐⭐⭐⭐ | 感情运旺，单身者把握机会 |
+| 10月 Oct | ⭐⭐⭐ | 财运平稳，控制开支 |
+| 11月 Nov | ⭐⭐⭐⭐ | 事业有新机遇，值得关注 |
+| 12月 Dec | ⭐⭐⭐⭐⭐ | **年度收尾极佳** 喜事临门 |
+
+**最佳行动月份 Best Action Months**: 5月、9月、12月
+**需谨慎月份 Caution Months**: 7月
+
+---
+
+## 🎨 你的幸运元素 · Your Lucky Elements
+
+### 幸运色 Lucky Colors
+
+| 颜色 Color | 中文 | 使用场景 When to Use |
+|-----------|------|---------------------|
+| 🔵 深蓝色 Deep Blue | 沉稳、智慧 | 重要会议、谈判 |
+| 🟡 金色 Gold | 财富、成功 | 求财、投资决策 |
+| 🟢 翠绿色 Emerald Green | 生机、希望 | 新项目启动、面试 |
+
+### 幸运数字 Lucky Numbers
+
+**主幸运数字 Primary**: **6** (顺利、圆满)
+**次幸运数字 Secondary**: **3、8**
+
+> 使用建议：选择这些数字的日期做重要决策，或作为密码、楼层等的选择参考。
+
+### 幸运方位 Lucky Directions
+
+| 方位 Direction | 适合事项 Best For |
+|---------------|------------------|
+| 东南 Southeast | 求财、谈判、签约 |
+| 正南 South | 名声、事业、面试 |
+| 正东 East | 健康、学业、新开始 |
+
+> 建议：办公桌朝向、出行方向可参考这些方位。
+
+### 幸运五行 Lucky Element
+
+**您的${currentYear}年幸运五行**: **木 Wood**
+
+> 多接触绿色植物、木质饰品，有助于增强您的能量场。
+
+---
+
+## ⚠️ 注意事项 · Caution Areas
+
+### ${currentYear}年需特别注意
+
+1. **7月 July** - 人际关系容易出现摩擦，说话前三思
+   - 避免在社交媒体发表敏感言论
+   - 职场中保持低调，不宜强出头
+
+2. **签约合作** - 仔细阅读条款，特别是3月和10月
+   - 重大合同建议咨询专业人士
+   - 口头承诺最好有书面确认
+
+3. **健康方面** - 注意用眼和心血管
+   - 每2小时起身活动
+   - 定期体检，尤其是下半年
+
+4. **出行安全** - 避免在冲煞日进行长途旅行
+   - 开车注意安全，避免疲劳驾驶
+
+---
+
+## 🚫 规避问题 · Pitfalls to Avoid
+
+### ${currentYear}年不宜做的事
+
+| 类别 Category | 不宜 Avoid | 原因 Reason |
+|--------------|-----------|-------------|
+| 投资 Investment | 高风险投机 | 财运中等，不宜冒险 |
+| 人际 Relations | 与小人纠缠 | 损耗精力，得不偿失 |
+| 事业 Career | 冲动辞职 | 稳定为上，先找好下家 |
+| 感情 Love | 闪电结婚 | 宜多了解，避免冲动 |
+| 健康 Health | 熬夜过度 | 免疫力下降，易生病 |
+
+### 特别提醒 Special Warnings
+
+- **不宜合伙做生意** - ${currentYear}年容易因利益分配产生纠纷
+- **不宜借钱给他人** - 借出去的钱难以收回
+- **不宜在农历七月做重大决定** - 传统认为此月能量不稳定
+
+---
+
+## ✨ 顺遂之道 · Success Strategies for ${currentYear}
+
+### 如何让${currentYear}年更顺利？
+
+#### 第一步：把握时机 (Timing)
+- **重大决策**：选择5月、9月、12月
+- **新项目启动**：选择春季（2-4月）
+- **投资理财**：下半年优于上半年
+
+#### 第二步：借助贵人 (Support)
+- 多参加行业活动，拓展人脉
+- 保持与导师、长辈的联系
+- 对帮助你的人表达感恩
+
+#### 第三步：调整环境 (Environment)
+- 办公桌朝向东南或正南
+- 家中摆放绿色植物
+- 穿戴幸运色服饰
+
+#### 第四步：修身养性 (Self-Cultivation)
+- 每日冥想10分钟，保持内心平静
+- 阅读提升认知的书籍
+- 坚持运动，保持身体健康
+
+#### 第五步：行善积德 (Good Deeds)
+- 帮助他人，积累善缘
+- 捐赠或做义工
+- 对家人朋友多表达爱
+
+### 年度寄语 Year Message
+
+> ${currentYear}年，您最大的优势是**稳健**。不要急于求成，踏实走好每一步，年底会收获意想不到的惊喜。
+>
+> Your greatest strength in ${currentYear} is **steadiness**. Don't rush. Take solid steps, and you'll be pleasantly surprised by year's end.
 
 ---
 
