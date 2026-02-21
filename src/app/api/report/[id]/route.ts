@@ -37,6 +37,11 @@ export async function GET(
         aiReport: report.aiReport,
         createdAt: report.createdAt,
       },
+    }, {
+      headers: {
+        // 缓存 1 小时，报告数据不会变化
+        'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+      },
     });
   } catch (error) {
     console.error('Get report error:', error);

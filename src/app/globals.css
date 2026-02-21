@@ -25,3 +25,49 @@ body {
   background: var(--color-gold);
   border-radius: 3px;
 }
+
+/* ─── 性能优化：动画 ─────────────────────────────────────────────────────────── */
+
+/* 尊重用户偏好：减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* GPU 加速提示 */
+[class*="motion"] {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* 平滑滚动（非减少动画模式） */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ─── 打印样式 ─────────────────────────────────────────────────────────────────── */
+
+@media print {
+  body {
+    background: white !important;
+  }
+
+  nav, footer, button, .no-print {
+    display: none !important;
+  }
+
+  /* 打印时显示链接 URL */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+}

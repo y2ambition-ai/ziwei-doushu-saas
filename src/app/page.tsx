@@ -2,7 +2,16 @@
 
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BaguaBackground } from '@/components/BaguaBackground';
+import dynamic from 'next/dynamic';
+
+// 动态导入八卦背景组件（非首屏关键内容）
+const BaguaBackground = dynamic(
+  () => import('@/components/BaguaBackground').then((mod) => mod.BaguaBackground),
+  {
+    ssr: false, // 不需要服务端渲染
+    loading: () => null,
+  }
+);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
