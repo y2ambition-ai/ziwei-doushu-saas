@@ -425,10 +425,13 @@ export default function HomePage() {
             {/* Current Location Time (for timezone calculation) */}
             <div id="field-currentHour">
               <label className="block text-[#1A0F05]/60 text-xs tracking-widest mb-2">
-                您现在几点？· Your Current Time
+                出生地现在几点？· Birthplace Time
               </label>
-              <p className="text-[#1A0F05]/40 text-xs mb-3">
-                用于计算您所在地的真太阳时，让命盘更精准
+              <p className="text-[#1A0F05]/40 text-xs mb-2">
+                用于计算出生地的真太阳时，让命盘更精准
+              </p>
+              <p className="text-red-600 text-xs mb-3 font-medium">
+                ⚠️ 特别提醒：请填写出生地当前时间，而非您现在所在位置的时间
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="relative">

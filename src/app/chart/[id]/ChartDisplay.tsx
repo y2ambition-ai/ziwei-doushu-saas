@@ -29,6 +29,7 @@ interface RawAstrolabe {
   zodiac?: string;
   fiveElementsClass?: string;
   chineseZodiac?: string;
+  chineseDate?: string; // 四柱数据，格式: "庚午 壬午 辛亥 甲午"
   year?: { categorical?: string };
   month?: { categorical?: string };
   day?: { categorical?: string };
@@ -73,18 +74,53 @@ function TaiChiSymbol({ className = '' }: { className?: string }) {
 }
 
 function BaguaRing({ className = '' }: { className?: string }) {
+  // 八卦三爻数据: [上爻, 中爻, 下爻] - true=阳(实线), false=阴(断线)
+  // 后天八卦顺序（从北开始顺时针）: 坎、艮、震、巽、离、坤、兑、乾
+  const bagua = [
+    [false, true, false], // 坎 ☵ (北, 0°)
+    [true, false, false], // 艮 ☶ (东北, 45°)
+    [false, false, true], // 震 ☳ (东, 90°)
+    [true, true, false],  // 巽 ☴ (东南, 135°)
+    [true, false, true],  // 离 ☲ (南, 180°)
+    [false, false, false],// 坤 ☷ (西南, 225°)
+    [false, true, true],  // 兑 ☱ (西, 270°)
+    [true, true, true],   // 乾 ☰ (西北, 315°)
+  ];
+
+  // 绘制单个卦象（三爻）
+  const renderTrigram = (lines: boolean[], index: number) => {
+    const angle = index * 45;
+    const radius = 92;
+    const centerX = 100 + radius * Math.sin(angle * Math.PI / 180);
+    const centerY = 100 - radius * Math.cos(angle * Math.PI / 180);
+
+    return (
+      <g key={index} transform={`translate(${centerX - 8}, ${centerY - 6})`}>
+        {[0, 1, 2].map((lineIndex) => {
+          const isYang = lines[lineIndex];
+          const y = lineIndex * 5;
+          return isYang ? (
+            // 阳爻：实线
+            <rect key={lineIndex} x="0" y={y} width="16" height="2" fill="currentColor" />
+          ) : (
+            // 阴爻：中间断开的两段
+            <g key={lineIndex}>
+              <rect x="0" y={y} width="6" height="2" fill="currentColor" />
+              <rect x="10" y={y} width="6" height="2" fill="currentColor" />
+            </g>
+          );
+        })}
+      </g>
+    );
+  };
+
   return (
     <svg viewBox="0 0 200 200" className={className}>
       {/* 外圈 */}
-      <circle cx="100" cy="100" r="95" fill="none" stroke="currentColor" strokeWidth="0.5" />
-      <circle cx="100" cy="100" r="85" fill="none" stroke="currentColor" strokeWidth="0.3" />
-      {/* 八卦符号位置 */}
-      {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => (
-        <g key={i} transform={`rotate(${angle} 100 100)`}>
-          <line x1="100" y1="8" x2="100" y2="18" stroke="currentColor" strokeWidth="2" />
-          <circle cx="100" cy="12" r="1.5" fill="currentColor" />
-        </g>
-      ))}
+      <circle cx="100" cy="100" r="98" fill="none" stroke="currentColor" strokeWidth="0.5" />
+      <circle cx="100" cy="100" r="88" fill="none" stroke="currentColor" strokeWidth="0.3" />
+      {/* 八卦符号 */}
+      {bagua.map((trigram, i) => renderTrigram(trigram, i))}
     </svg>
   );
 }
@@ -184,16 +220,17 @@ function PalaceCell({ palace, isCenter, astrolabe }: {
   if (isCenter) {
     return (
       <div className="col-span-2 row-span-2 relative overflow-hidden
-                      bg-gradient-to-br from-[#1A0F05] via-[#2D1F15] to-[#1A0F05]
-                      flex flex-col items-center justify-center text-[#F7F3EC] p-4 md:p-6">
+                      bg-gradient-to-br from-[#FDF8F0] via-[#F5EDE0] to-[#EDE4D5]
+                      flex flex-col items-center justify-center text-[#1A0F05] p-4 md:p-6
+                      border border-[#B8925A]/20">
         {/* 背景装饰 */}
-        <div className="absolute inset-0 opacity-[0.03]">
-          <BaguaRing className="w-full h-full text-[#B8925A]" />
+        <div className="absolute inset-0 opacity-[0.08]">
+          <BaguaRing className="w-full h-full text-[#8B4513]" />
         </div>
-        <div className="absolute top-2 right-2 opacity-10">
+        <div className="absolute top-2 right-2 opacity-15">
           <CloudPattern className="w-16 h-8 text-[#B8925A]" />
         </div>
-        <div className="absolute bottom-2 left-2 opacity-10 rotate-180">
+        <div className="absolute bottom-2 left-2 opacity-15 rotate-180">
           <CloudPattern className="w-16 h-8 text-[#B8925A]" />
         </div>
 
@@ -204,13 +241,13 @@ function PalaceCell({ palace, isCenter, astrolabe }: {
             animate={{ rotate: 360 }}
             transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
           >
-            <TaiChiSymbol className="w-12 h-12 md:w-16 md:h-16 mx-auto text-[#B8925A]" />
+            <TaiChiSymbol className="w-12 h-12 md:w-16 md:h-16 mx-auto text-[#8B4513]" />
           </motion.div>
-          <p className="text-[#B8925A] text-[10px] tracking-[0.3em] mb-2">紫微斗數</p>
-          <p className="text-base md:text-lg mb-1">{astrolabe?.gender === '男' ? '男命' : '女命'}</p>
-          <p className="text-xs text-[#F7F3EC]/60">{astrolabe?.lunarDate || ''}</p>
-          <div className="mt-3 pt-3 border-t border-[#B8925A]/20">
-            <p className="text-[#B8925A] text-[10px] tracking-wider">五行局</p>
+          <p className="text-[#8B4513] text-[10px] tracking-[0.3em] mb-2 font-medium">紫微斗數</p>
+          <p className="text-base md:text-lg mb-1 font-medium">{astrolabe?.gender === '男' ? '男命' : '女命'}</p>
+          <p className="text-xs text-[#1A0F05]/60">{astrolabe?.lunarDate || ''}</p>
+          <div className="mt-3 pt-3 border-t border-[#8B4513]/20">
+            <p className="text-[#8B4513] text-[10px] tracking-wider">五行局</p>
             <p className="text-lg md:text-xl font-medium mt-0.5">{astrolabe?.fiveElementsClass || '-'}</p>
           </div>
         </div>
@@ -351,12 +388,17 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
     return cells;
   };
 
-  const siZhu = {
-    year: astrolabe?.year?.categorical || '',
-    month: astrolabe?.month?.categorical || '',
-    day: astrolabe?.day?.categorical || '',
-    hour: astrolabe?.hour?.categorical || '',
-  };
+  // 解析四柱数据：优先使用 chineseDate 字段，回退到原来的方式
+  const chineseDate = astrolabe?.chineseDate || '';
+  const siZhuParts = chineseDate.split(' ');
+  const siZhu = siZhuParts.length === 4
+    ? { year: siZhuParts[0], month: siZhuParts[1], day: siZhuParts[2], hour: siZhuParts[3] }
+    : {
+        year: astrolabe?.year?.categorical || '',
+        month: astrolabe?.month?.categorical || '',
+        day: astrolabe?.day?.categorical || '',
+        hour: astrolabe?.hour?.categorical || '',
+      };
 
   return (
     <div className="min-h-screen bg-[#F7F3EC] relative overflow-hidden">
@@ -533,37 +575,37 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
             </div>
           </motion.div>
 
-          {/* 获取AI解读 */}
+          {/* 获取命理解读 - 温暖金色系 */}
           <motion.div
-            className="mt-12 text-center"
+            className="mt-10 text-center"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.6 }}
           >
-            <div className="inline-block p-8 bg-gradient-to-br from-[#1A0F05] via-[#2D1F15] to-[#1A0F05] text-[#F7F3EC] relative overflow-hidden">
+            <div className="inline-block p-6 bg-gradient-to-br from-[#FDF8F0] via-[#F9F3E8] to-[#F5EDE0] border-2 border-[#B8925A]/30 text-[#1A0F05] relative overflow-hidden shadow-lg">
               {/* 装饰 */}
-              <div className="absolute top-2 right-2 opacity-10">
-                <CloudPattern className="w-20 h-10 text-[#B8925A]" />
-              </div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#B8925A]/50 to-transparent" />
 
               <div className="relative">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <TaiChiSymbol className="w-5 h-5 text-[#B8925A]" />
-                  <p className="text-[#B8925A] text-xs tracking-[0.3em]">專業AI解讀</p>
-                  <TaiChiSymbol className="w-5 h-5 text-[#B8925A]" />
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <TaiChiSymbol className="w-4 h-4 text-[#8B4513]" />
+                  <p className="text-[#8B4513] text-xs tracking-[0.25em] font-medium">命理精解</p>
+                  <TaiChiSymbol className="w-4 h-4 text-[#8B4513]" />
                 </div>
-                <p className="text-sm mb-6 opacity-70 max-w-xs mx-auto leading-relaxed">
-                  命盘已生成，是否获取专业AI命理师解读？<br />
-                  <span className="text-[#B8925A] text-xs">解读报告将发送至您的邮箱</span>
+                <p className="text-sm mb-3 text-[#1A0F05]/80 max-w-md mx-auto leading-relaxed">
+                  我们搭建了<span className="text-[#8B4513] font-medium">专属命理知识库</span>，汇聚<span className="text-[#8B4513] font-medium">30余位道教大师</span>毕生智慧
+                </p>
+                <p className="text-xs mb-4 text-[#1A0F05]/50 max-w-md mx-auto">
+                  解读报告将通过<span className="text-[#B8925A]">网页</span>及<span className="text-[#B8925A]">邮件</span>发送给您
                 </p>
                 <Link
                   href={`/result/${report.id}`}
-                  className="inline-flex items-center gap-2 text-xs tracking-[0.2em] px-10 py-4
-                            bg-gradient-to-r from-[#B8925A] to-[#D4A969] text-[#1A0F05] font-medium
-                            hover:from-[#D4A969] hover:to-[#B8925A] transition-all duration-300
-                            shadow-lg hover:shadow-xl"
+                  className="inline-flex items-center gap-2 text-xs tracking-[0.15em] px-8 py-3
+                            bg-[#8B4513] text-[#F7F3EC] font-medium
+                            hover:bg-[#A0522D] transition-all duration-300
+                            shadow-md hover:shadow-lg"
                 >
-                  <span>获取AI解读报告</span>
+                  <span>获取大师解读</span>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
@@ -573,7 +615,7 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
           </motion.div>
 
           {/* Actions */}
-          <div className="mt-10 flex flex-col md:flex-row items-center justify-center gap-4">
+          <div className="mt-8 flex flex-col md:flex-row items-center justify-center gap-4">
             <Link
               href="/"
               className="text-xs tracking-[0.15em] px-6 py-3 border border-[#B8925A] text-[#B8925A]
@@ -591,8 +633,8 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
           </div>
 
           {/* Disclaimer */}
-          <div className="mt-12 pt-8 border-t border-[#B8925A]/10">
-            <p className="text-center text-[#1A0F05]/25 text-xs leading-relaxed tracking-wide max-w-md mx-auto">
+          <div className="mt-10 pt-6 border-t border-[#B8925A]/10">
+            <p className="text-center text-[#1A0F05]/25 text-xs tracking-wide whitespace-nowrap">
               本命盘基于紫微斗数排盘算法生成，仅供参考。命理分析需结合多种因素综合判断。
             </p>
           </div>
@@ -600,10 +642,10 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
       </main>
 
       {/* Footer */}
-      <footer className="relative border-t border-[#B8925A]/15 py-8 px-8 bg-[#F0EBE1]">
-        <div className="max-w-6xl mx-auto flex flex-col items-center gap-4">
+      <footer className="relative border-t border-[#B8925A]/15 py-6 px-8 bg-[#F0EBE1]">
+        <div className="max-w-6xl mx-auto flex flex-col items-center gap-3">
           <div className="flex items-center gap-3">
-            <TaiChiSymbol className="w-5 h-5 text-[#B8925A] opacity-50" />
+            <TaiChiSymbol className="w-4 h-4 text-[#B8925A] opacity-50" />
             <span className="text-[#1A0F05]/30 text-xs tracking-[0.2em]">天命玄机</span>
           </div>
           <p className="text-[#1A0F05]/20 text-xs tracking-wider">
