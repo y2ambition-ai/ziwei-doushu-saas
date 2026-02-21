@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
       zodiac: astrolabe.parsed.zodiac,
       siZhu: astrolabe.parsed.siZhu,
       palaces: astrolabe.parsed.palaces,
+      rawAstrolabe: astrolabe.raw, // 传递原始命盘数据
     };
 
     // 5. 生成报告 (检查是否有 API Key)

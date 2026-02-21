@@ -54,3 +54,5 @@ vite-backup/
 
 # Test
 coverage/
+
+.vercel

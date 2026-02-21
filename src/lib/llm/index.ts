@@ -34,6 +34,8 @@ export interface GenerateReportInput {
     majorStars: string[];
     minorStars: string[];
   }>;
+  // 新增：原始命盘数据（用于完整格式化）
+  rawAstrolabe?: unknown;
 }
 
 export interface GenerateReportOutput {
@@ -75,8 +77,26 @@ const SYSTEM_PROMPT = `你是一位精通紫微斗数的命理大师，拥有30�
 
 // ─── User Prompt Template ──────────────────────────────────────────────────────
 
+// 导入格式化函数
+import { formatAstrolabeForLLM } from '../ziwei/wrapper';
+
 function buildUserPrompt(input: GenerateReportInput): string {
   const shichenName = getShichenName(input.birthTime);
+
+  // 如果有原始命盘数据，使用完整格式化
+  let astrolabeData = '';
+  if (input.rawAstrolabe) {
+    astrolabeData = formatAstrolabeForLLM(input.rawAstrolabe);
+  } else {
+    // 降级到简化格式
+    astrolabeData = `## 命盘核心
+- 命宫主星：${input.mingGong}
+- 五行局：${input.wuXingJu}
+- 生肖：${input.chineseZodiac} / ${input.zodiac}
+
+## 十二宫星曜
+${formatPalaces(input.palaces)}`;
+  }
 
   return `请为以下命主进行紫微斗数命盘解读：
 
@@ -91,13 +111,7 @@ function buildUserPrompt(input: GenerateReportInput): string {
 - 日柱：${input.siZhu.day}
 - 时柱：${input.siZhu.hour}
 
-## 命盘核心
-- 命宫主星：${input.mingGong}
-- 五行局：${input.wuXingJu}
-- 生肖：${input.chineseZodiac} / ${input.zodiac}
-
-## 十二宫星曜
-${formatPalaces(input.palaces)}
+${astrolabeData}
 
 请生成一份详细的命盘解读报告，要求：
 1. 首先给出一个100字以内的"核心身份"总结（用于卡片展示）

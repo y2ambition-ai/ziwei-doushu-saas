@@ -66,6 +66,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLElement>(null);
 
   const years = Array.from({ length: 120 }, (_, i) => 2010 - i);
@@ -76,8 +77,28 @@ export default function HomePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.email || !form.gender || !form.year || !form.month || !form.day || !form.shichen || !form.currentHour) return;
 
+    // 字段验证
+    const errors: Record<string, string> = {};
+    if (!form.email) errors.email = '请填写邮箱';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = '邮箱格式不正确';
+    if (!form.gender) errors.gender = '请选择性别';
+    if (!form.year) errors.year = '请选择出生年份';
+    if (!form.month) errors.month = '请选择出生月份';
+    if (!form.day) errors.day = '请选择出生日期';
+    if (!form.shichen) errors.shichen = '请选择出生时辰';
+    if (!form.currentHour) errors.currentHour = '请选择当前小时';
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      // 滚动到第一个错误字段
+      const firstError = Object.keys(errors)[0];
+      const element = document.getElementById(`field-${firstError}`);
+      element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    setValidationErrors({});
     setLoading(true);
     setError(null);
 
@@ -282,7 +303,7 @@ export default function HomePage() {
             transition={{ duration: 0.9, delay: 0.15 }}
           >
             {/* Email */}
-            <div>
+            <div id="field-email">
               <label className="block text-[#1A0F05]/60 text-xs tracking-widest mb-2">
                 邮箱 · Email
               </label>
@@ -290,37 +311,42 @@ export default function HomePage() {
                 type="email"
                 placeholder="请输入您的邮箱"
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className={inputCls}
-                required
+                onChange={(e) => { setForm({ ...form, email: e.target.value }); setValidationErrors({ ...validationErrors, email: '' }); }}
+                className={`${inputCls} ${validationErrors.email ? 'border-red-500 bg-red-50' : ''}`}
               />
+              {validationErrors.email && (
+                <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>
+              )}
             </div>
 
             {/* Gender */}
-            <div>
+            <div id="field-gender">
               <label className="block text-[#1A0F05]/60 text-xs tracking-widest mb-2">
                 性别 · Gender
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, gender: 'male' })}
-                  className={`py-3 border transition-all duration-300 text-sm ${form.gender === 'male' ? 'border-[#B8925A] bg-[#B8925A]/10 text-[#1A0F05]' : 'border-[#B8925A]/30 text-[#1A0F05]/60 hover:border-[#B8925A]/50'}`}
+                  onClick={() => { setForm({ ...form, gender: 'male' }); setValidationErrors({ ...validationErrors, gender: '' }); }}
+                  className={`py-3 border transition-all duration-300 text-sm ${form.gender === 'male' ? 'border-[#B8925A] bg-[#B8925A]/10 text-[#1A0F05]' : validationErrors.gender ? 'border-red-500 text-[#1A0F05]/60' : 'border-[#B8925A]/30 text-[#1A0F05]/60 hover:border-[#B8925A]/50'}`}
                 >
                   男 · Male
                 </button>
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, gender: 'female' })}
-                  className={`py-3 border transition-all duration-300 text-sm ${form.gender === 'female' ? 'border-[#B8925A] bg-[#B8925A]/10 text-[#1A0F05]' : 'border-[#B8925A]/30 text-[#1A0F05]/60 hover:border-[#B8925A]/50'}`}
+                  onClick={() => { setForm({ ...form, gender: 'female' }); setValidationErrors({ ...validationErrors, gender: '' }); }}
+                  className={`py-3 border transition-all duration-300 text-sm ${form.gender === 'female' ? 'border-[#B8925A] bg-[#B8925A]/10 text-[#1A0F05]' : validationErrors.gender ? 'border-red-500 text-[#1A0F05]/60' : 'border-[#B8925A]/30 text-[#1A0F05]/60 hover:border-[#B8925A]/50'}`}
                 >
                   女 · Female
                 </button>
               </div>
+              {validationErrors.gender && (
+                <p className="text-red-500 text-xs mt-1">{validationErrors.gender}</p>
+              )}
             </div>
 
             {/* Birth Date */}
-            <div>
+            <div id="field-year">
               <label className="block text-[#1A0F05]/60 text-xs tracking-widest mb-2">
                 出生年月日 · Date of Birth
               </label>
@@ -328,9 +354,8 @@ export default function HomePage() {
                 <div className="relative">
                   <select
                     value={form.year}
-                    onChange={(e) => setForm({ ...form, year: e.target.value })}
-                    className={selectCls}
-                    required
+                    onChange={(e) => { setForm({ ...form, year: e.target.value }); setValidationErrors({ ...validationErrors, year: '' }); }}
+                    className={`${selectCls} ${validationErrors.year ? 'border-red-500 bg-red-50' : ''}`}
                   >
                     <option value="">年</option>
                     {years.map((y) => (
@@ -342,9 +367,8 @@ export default function HomePage() {
                 <div className="relative">
                   <select
                     value={form.month}
-                    onChange={(e) => setForm({ ...form, month: e.target.value })}
-                    className={selectCls}
-                    required
+                    onChange={(e) => { setForm({ ...form, month: e.target.value }); setValidationErrors({ ...validationErrors, month: '' }); }}
+                    className={`${selectCls} ${validationErrors.month ? 'border-red-500 bg-red-50' : ''}`}
                   >
                     <option value="">月</option>
                     {months.map((m) => (
@@ -356,9 +380,8 @@ export default function HomePage() {
                 <div className="relative">
                   <select
                     value={form.day}
-                    onChange={(e) => setForm({ ...form, day: e.target.value })}
-                    className={selectCls}
-                    required
+                    onChange={(e) => { setForm({ ...form, day: e.target.value }); setValidationErrors({ ...validationErrors, day: '' }); }}
+                    className={`${selectCls} ${validationErrors.day ? 'border-red-500 bg-red-50' : ''}`}
                   >
                     <option value="">日</option>
                     {days.map((d) => (
@@ -368,19 +391,21 @@ export default function HomePage() {
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#B8925A]/60 text-xs">▾</span>
                 </div>
               </div>
+              {(validationErrors.year || validationErrors.month || validationErrors.day) && (
+                <p className="text-red-500 text-xs mt-1">请完整选择出生日期</p>
+              )}
             </div>
 
             {/* Birth Shichen */}
-            <div>
+            <div id="field-shichen">
               <label className="block text-[#1A0F05]/60 text-xs tracking-widest mb-2">
                 出生时辰 · Birth Hour
               </label>
               <div className="relative">
                 <select
                   value={form.shichen}
-                  onChange={(e) => setForm({ ...form, shichen: e.target.value })}
-                  className={selectCls}
-                  required
+                  onChange={(e) => { setForm({ ...form, shichen: e.target.value }); setValidationErrors({ ...validationErrors, shichen: '' }); }}
+                  className={`${selectCls} ${validationErrors.shichen ? 'border-red-500 bg-red-50' : ''}`}
                 >
                   <option value="">请选择出生时辰</option>
                   {SHICHEN.map(({ value, label, animal }) => (
@@ -389,10 +414,13 @@ export default function HomePage() {
                 </select>
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#B8925A]/60 text-xs">▾</span>
               </div>
+              {validationErrors.shichen && (
+                <p className="text-red-500 text-xs mt-1">{validationErrors.shichen}</p>
+              )}
             </div>
 
             {/* Current Location Time (for timezone calculation) */}
-            <div>
+            <div id="field-currentHour">
               <label className="block text-[#1A0F05]/60 text-xs tracking-widest mb-2">
                 您现在几点？· Your Current Time
               </label>
@@ -403,9 +431,8 @@ export default function HomePage() {
                 <div className="relative">
                   <select
                     value={form.currentHour}
-                    onChange={(e) => setForm({ ...form, currentHour: e.target.value })}
-                    className={selectCls}
-                    required
+                    onChange={(e) => { setForm({ ...form, currentHour: e.target.value }); setValidationErrors({ ...validationErrors, currentHour: '' }); }}
+                    className={`${selectCls} ${validationErrors.currentHour ? 'border-red-500 bg-red-50' : ''}`}
                   >
                     <option value="">时</option>
                     {hours.map((h) => (
@@ -428,6 +455,9 @@ export default function HomePage() {
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#B8925A]/60 text-xs">▾</span>
                 </div>
               </div>
+              {validationErrors.currentHour && (
+                <p className="text-red-500 text-xs mt-1">{validationErrors.currentHour}</p>
+              )}
             </div>
 
             {/* Price + Submit */}
