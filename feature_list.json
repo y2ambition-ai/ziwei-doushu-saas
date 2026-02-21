@@ -317,7 +317,7 @@
         "API 响应缓存",
         "Core Web Vitals 达标"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F025",
