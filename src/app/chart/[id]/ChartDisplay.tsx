@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -360,8 +361,47 @@ function PalaceCell({ palace, isCenter, astrolabe }: {
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 export default function ChartDisplay({ report }: ChartDisplayProps) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const astrolabe = report.rawAstrolabe;
   const palaces = astrolabe?.palaces || [];
+
+  // 获取大师解读
+  const handleGetReading = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: report.email,
+          gender: report.gender,
+          birthDate: report.birthDate,
+          birthTime: report.birthTime,
+          birthMinute: 0,
+          birthCity: report.birthCity,
+          reportId: report.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.freeReuse && data.reportId) {
+        // 7天内免费复用，直接跳转
+        router.push(`/result/${data.reportId}`);
+      } else if (data.url) {
+        // 需要付费，跳转到 Stripe
+        window.location.href = data.url;
+      } else if (data.isMock) {
+        // Mock 模式，直接跳转到结果页
+        router.push(`/result/${report.id}`);
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      // 出错时也跳转到结果页
+      router.push(`/result/${report.id}`);
+    }
+  };
 
   const renderGrid = () => {
     const cells: React.ReactNode[] = [];
@@ -598,18 +638,38 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
                 <p className="text-xs mb-4 text-[#1A0F05]/50 max-w-md mx-auto">
                   解读报告将通过<span className="text-[#B8925A]">网页</span>及<span className="text-[#B8925A]">邮件</span>发送给您
                 </p>
-                <Link
-                  href={`/result/${report.id}`}
+                {/* 7天免费复用提示 */}
+                <p className="text-[10px] mb-4 text-[#8B4513]/70 max-w-md mx-auto">
+                  同一邮箱、相同参数 7 天内免费复用
+                </p>
+                <button
+                  onClick={handleGetReading}
+                  disabled={loading}
                   className="inline-flex items-center gap-2 text-xs tracking-[0.15em] px-8 py-3
                             bg-[#8B4513] text-[#F7F3EC] font-medium
                             hover:bg-[#A0522D] transition-all duration-300
-                            shadow-md hover:shadow-lg"
+                            shadow-md hover:shadow-lg disabled:opacity-60"
                 >
-                  <span>获取大师解读</span>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </Link>
+                  {loading ? (
+                    <>
+                      <motion.span
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                        className="inline-block"
+                      >
+                        ☯
+                      </motion.span>
+                      <span>正在处理...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>获取大师解读</span>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </motion.div>

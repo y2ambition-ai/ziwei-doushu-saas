@@ -96,12 +96,13 @@ export async function POST(request: NextRequest) {
       throw aiError;
     }
 
-    // 6. 更新数据库
+    // 6. 更新数据库（设置 paidAt 表示已付费/已生成AI报告）
     await prisma.report.update({
       where: { id: reportId },
       data: {
         aiReport: reportResult.report,
         coreIdentity: reportResult.coreIdentity,
+        paidAt: new Date(), // 标记为已付费，用于7天免费复用判断
       },
     });
 
