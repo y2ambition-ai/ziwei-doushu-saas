@@ -35,6 +35,7 @@ function Divider() {
 }
 
 function getShichenName(hour: number): string {
+  // hour 是 0-23，需要转换为 0-11 的时辰索引
   const shichenMap: Record<number, string> = {
     0: '子时 (23:00-01:00)',
     1: '丑时 (01:00-03:00)',
@@ -49,7 +50,9 @@ function getShichenName(hour: number): string {
     10: '戌时 (19:00-21:00)',
     11: '亥时 (21:00-23:00)',
   };
-  return shichenMap[hour] || '未知时辰';
+  // 23点归为子时(0)，其他 hour/2 向下取整
+  const shichenIndex = hour === 23 ? 0 : Math.floor((hour + 1) / 2);
+  return shichenMap[shichenIndex] || '未知时辰';
 }
 
 function renderMarkdown(text: string) {
@@ -119,6 +122,18 @@ function renderMarkdown(text: string) {
 // ─── Loading Animation ─────────────────────────────────────────────────────────
 
 function LoadingAnimation() {
+  const [countdown, setCountdown] = useState(300);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const minutes = Math.floor(countdown / 60);
+  const seconds = countdown % 60;
+
   return (
     <div className="text-center py-16">
       <motion.div
@@ -129,7 +144,10 @@ function LoadingAnimation() {
         ☯
       </motion.div>
       <p className="text-[#B8925A] tracking-widest text-sm mb-2">AI 命理师正在解读</p>
-      <p className="text-[#1A0F05]/40 text-xs">正在结合您的命盘数据生成专属解读报告...</p>
+      <p className="text-[#1A0F05]/40 text-xs mb-4">正在结合您的命盘数据生成专属解读报告...</p>
+      <p className="text-[#8B4513] text-sm font-medium">
+        预计剩余时间：{minutes}:{seconds.toString().padStart(2, '0')}
+      </p>
     </div>
   );
 }
