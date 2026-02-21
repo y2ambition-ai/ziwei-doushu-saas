@@ -186,11 +186,12 @@ export async function POST(request: NextRequest) {
       rawAstrolabe: astrolabe.raw,
     };
 
-    // 6. 生成报告
-    const hasApiKey = process.env.DOUBAO_API_KEY && process.env.DOUBAO_API_KEY.length > 0;
-    const reportResult = hasApiKey
-      ? await generateReport(llmInput)
-      : generateMockReport(llmInput);
+    // 6. 生成报告（暂时跳过豆包API，只生成排盘）
+    // 用户可以在排盘页面选择是否获取AI解读
+    const reportResult = {
+      coreIdentity: `命宫主星：${llmInput.mingGong}，五行属${llmInput.wuXingJu}`,
+      report: '', // 暂不生成AI报告
+    };
 
     // 7. 存储到数据库
     let reportId = `test-${Date.now()}`;

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import Link from 'next/link';
 
@@ -115,10 +116,66 @@ function renderMarkdown(text: string) {
   });
 }
 
+// ─── Loading Animation ─────────────────────────────────────────────────────────
+
+function LoadingAnimation() {
+  return (
+    <div className="text-center py-16">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+        className="inline-block text-4xl text-[#B8925A] mb-6"
+      >
+        ☯
+      </motion.div>
+      <p className="text-[#B8925A] tracking-widest text-sm mb-2">AI 命理师正在解读</p>
+      <p className="text-[#1A0F05]/40 text-xs">正在结合您的命盘数据生成专属解读报告...</p>
+    </div>
+  );
+}
+
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export default function ReportContent({ report }: ReportContentProps) {
-  const genderText = report.gender === 'male' ? '男' : '女';
+  const [aiReport, setAiReport] = useState(report.aiReport);
+  const [coreIdentity, setCoreIdentity] = useState(report.coreIdentity);
+  const [loading, setLoading] = useState(!report.aiReport || report.aiReport.length < 100);
+  const [error, setError] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
+
+  // 如果没有AI报告，自动请求生成
+  useEffect(() => {
+    if (!report.aiReport || report.aiReport.length < 100) {
+      generateAIReport();
+    }
+  }, [report.id]);
+
+  const generateAIReport = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/report/ai-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: report.id }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'AI报告生成失败');
+      }
+
+      setAiReport(data.report);
+      setCoreIdentity(data.coreIdentity);
+      setEmailSent(data.emailSent || false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'AI报告生成失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F7F3EC]">
@@ -158,31 +215,79 @@ export default function ReportContent({ report }: ReportContentProps) {
             <Divider />
           </div>
 
-          {/* Core Identity Card */}
-          <motion.div
-            className="mb-10 p-8 bg-[#1A0F05] text-[#F7F3EC] text-center"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <p className="text-[#B8925A] text-xs tracking-widest mb-3">核心身份</p>
-            <p className="text-lg leading-relaxed">{report.coreIdentity}</p>
-          </motion.div>
+          {/* Content Area */}
+          {loading ? (
+            <motion.div
+              className="border border-[#B8925A]/20 p-8 md:p-12"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <LoadingAnimation />
+            </motion.div>
+          ) : error ? (
+            <motion.div
+              className="border border-red-300 bg-red-50 p-8 text-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={generateAIReport}
+                className="text-xs tracking-widest px-6 py-3 border border-[#B8925A] text-[#B8925A]
+                           hover:bg-[#B8925A] hover:text-[#F7F3EC] transition-all duration-300"
+              >
+                重试
+              </button>
+            </motion.div>
+          ) : (
+            <>
+              {/* Email Sent Notice */}
+              {emailSent && (
+                <motion.div
+                  className="mb-6 p-4 bg-[#B8925A]/10 border border-[#B8925A]/20 text-center"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <p className="text-sm text-[#1A0F05]/70">
+                    <span className="text-[#B8925A]">✓</span> 报告已发送至您的邮箱 <strong>{report.email}</strong>
+                  </p>
+                </motion.div>
+              )}
 
-          {/* Report Content */}
-          <motion.div
-            className="border border-[#B8925A]/20 p-8 md:p-12"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
-            <div className="prose prose-sm max-w-none">
-              {renderMarkdown(report.aiReport)}
-            </div>
-          </motion.div>
+              {/* Core Identity Card */}
+              <motion.div
+                className="mb-10 p-8 bg-[#1A0F05] text-[#F7F3EC] text-center"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <p className="text-[#B8925A] text-xs tracking-widest mb-3">核心身份</p>
+                <p className="text-lg leading-relaxed">{coreIdentity}</p>
+              </motion.div>
+
+              {/* Report Content */}
+              <motion.div
+                className="border border-[#B8925A]/20 p-8 md:p-12"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+              >
+                <div className="prose prose-sm max-w-none">
+                  {renderMarkdown(aiReport)}
+                </div>
+              </motion.div>
+            </>
+          )}
 
           {/* Actions */}
           <div className="mt-10 flex flex-col md:flex-row items-center justify-center gap-6">
+            <Link
+              href={`/chart/${report.id}`}
+              className="text-xs tracking-widest px-6 py-3 border border-[#B8925A]/50 text-[#1A0F05]/60
+                         hover:border-[#B8925A] hover:text-[#B8925A] transition-all duration-300"
+            >
+              查看命盘
+            </Link>
             <Link
               href="/"
               className="text-xs tracking-widest px-6 py-3 border border-[#B8925A] text-[#B8925A]

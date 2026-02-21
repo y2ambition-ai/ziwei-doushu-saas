@@ -135,11 +135,8 @@ export default function HomePage() {
         throw new Error(data.error || '报告生成失败');
       }
 
-      setReportData(data);
-      setSubmitted(true);
-      setTimeout(() => {
-        document.getElementById('result-section')?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+      // 跳转到排盘页面（暂时跳过豆包AI解读）
+      window.location.href = `/chart/${data.reportId}`;
     } catch (err) {
       setError(err instanceof Error ? err.message : '报告生成失败，请稍后重试');
     } finally {
