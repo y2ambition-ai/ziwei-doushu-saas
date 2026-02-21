@@ -64,6 +64,7 @@ export default function HomePage() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0); // 0: idle, 1: 排盘, 2: AI解读, 3: 完成
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -100,6 +101,7 @@ export default function HomePage() {
 
     setValidationErrors({});
     setLoading(true);
+    setLoadingStep(1); // 开始排盘
     setError(null);
 
     // Get shichen index
@@ -109,6 +111,9 @@ export default function HomePage() {
     const birthDate = `${form.year}-${String(form.month).padStart(2, '0')}-${String(form.day).padStart(2, '0')}`;
 
     try {
+      // 模拟排盘进度
+      setTimeout(() => setLoadingStep(2), 1000); // 1秒后进入 AI 解读阶段
+
       const response = await fetch('/api/report/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -139,6 +144,7 @@ export default function HomePage() {
       setError(err instanceof Error ? err.message : '报告生成失败，请稍后重试');
     } finally {
       setLoading(false);
+      setLoadingStep(0);
     }
   };
 
@@ -482,10 +488,13 @@ export default function HomePage() {
                     >
                       ☯
                     </motion.span>
-                    <span>正在推演命盘，请稍候……</span>
+                    <span>
+                      {loadingStep === 1 && '正在排盘推演……'}
+                      {loadingStep === 2 && 'AI 命理师解读中……'}
+                    </span>
                   </>
                 ) : (
-                  '支付 $1.99 · 开启命理推算'
+                  '开启命理推算'
                 )}
               </button>
               <p className="text-center text-[#1A0F05]/30 text-xs mt-3 tracking-wide">

@@ -3,6 +3,7 @@
  * POST /api/report/generate
  *
  * 用户输入当前位置时间，系统根据与北京时间的差异计算经度
+ * 支持缓存：相同信息 24 小时内免费复用
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -18,6 +19,7 @@ import { prisma } from '@/lib/db';
 
 const BEIJING_LONGITUDE = 120; // 东经120度 = 北京时间基准
 const HOURS_TO_DEGREES = 15; // 每1小时 = 15度经度
+const CACHE_HOURS = 24; // 缓存有效期（小时）
 
 // ─── Request Schema ────────────────────────────────────────────────────────────
 
@@ -52,26 +54,69 @@ function calculateLongitudeFromTimeDiff(
   const beijingTotalMinutes = beijingHour * 60 + beijingMinute;
 
   // 计算时间差（分钟）
-  // 如果用户时间比北京时间大很多（比如用户填了23点但北京时间是1点）
-  // 可能是跨日的情况，需要处理
   let timeDiffMinutes = userTotalMinutes - beijingTotalMinutes;
 
-  // 处理跨日情况：如果差值超过12小时，说明可能是跨日
+  // 处理跨日情况
   if (timeDiffMinutes > 12 * 60) {
-    timeDiffMinutes -= 24 * 60; // 用户时间其实是前一天
+    timeDiffMinutes -= 24 * 60;
   } else if (timeDiffMinutes < -12 * 60) {
-    timeDiffMinutes += 24 * 60; // 用户时间其实是后一天
+    timeDiffMinutes += 24 * 60;
   }
 
-  // 将时间差转换为经度偏移
-  // 每4分钟 = 1度经度
   const longitudeOffset = timeDiffMinutes / 4;
-
-  // 计算实际经度
   const longitude = BEIJING_LONGITUDE + longitudeOffset;
 
-  // 限制在合理范围内 (-180 到 180)
   return Math.max(-180, Math.min(180, longitude));
+}
+
+// ─── Helper: Check Cache ───────────────────────────────────────────────────────
+
+/**
+ * 检查是否有缓存的报告（24小时内相同信息）
+ */
+async function getCachedReport(body: GenerateRequest): Promise<{
+  found: boolean;
+  report?: {
+    id: string;
+    coreIdentity: string;
+    aiReport: string;
+    rawAstrolabe: string;
+  };
+}> {
+  try {
+    const cacheTime = new Date(Date.now() - CACHE_HOURS * 60 * 60 * 1000);
+
+    const cached = await prisma.report.findFirst({
+      where: {
+        email: body.email,
+        birthDate: body.birthDate,
+        birthTime: body.birthTime,
+        gender: body.gender,
+        createdAt: {
+          gte: cacheTime,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (cached) {
+      return {
+        found: true,
+        report: {
+          id: cached.id,
+          coreIdentity: cached.coreIdentity || '',
+          aiReport: cached.aiReport,
+          rawAstrolabe: cached.rawAstrolabe,
+        },
+      };
+    }
+  } catch (error) {
+    console.log('Cache check failed, continuing with fresh generation');
+  }
+
+  return { found: false };
 }
 
 // ─── POST Handler ──────────────────────────────────────────────────────────────
@@ -89,24 +134,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 根据用户当前时间计算经度
+    // 2. 检查缓存（24小时内相同信息免费复用）
+    const cached = await getCachedReport(body);
+    if (cached.found && cached.report) {
+      console.log('Returning cached report for:', body.email);
+      const rawAstrolabe = JSON.parse(cached.report.rawAstrolabe);
+      return NextResponse.json({
+        success: true,
+        reportId: cached.report.id,
+        coreIdentity: cached.report.coreIdentity,
+        report: cached.report.aiReport,
+        cached: true,
+        message: '您在24小时内已测算过相同信息，本次免费查看',
+        astrolabe: {
+          mingGong: rawAstrolabe.palaces?.find((p: { name: string }) => p.name === '命宫') || {},
+          chineseZodiac: rawAstrolabe.zodiac,
+        },
+      });
+    }
+
+    // 3. 根据用户当前时间计算经度
     const longitude = calculateLongitudeFromTimeDiff(
       body.currentHour,
       body.currentMinute
     );
 
-    // 3. 生成命盘
+    // 4. 生成命盘
     const astrolabe = generateAstrolabe({
       birthDate: body.birthDate,
       birthTime: body.birthTime,
       birthMinute: body.birthMinute,
       gender: body.gender,
       longitude,
-      latitude: 0, // 纬度对时辰计算影响较小
+      latitude: 0,
       birthCity: `经度${longitude.toFixed(1)}°`,
     });
 
-    // 4. 准备 LLM 输入
+    // 5. 准备 LLM 输入
     const llmInput: GenerateReportInput = {
       email: body.email,
       gender: body.gender,
@@ -119,16 +183,16 @@ export async function POST(request: NextRequest) {
       zodiac: astrolabe.parsed.zodiac,
       siZhu: astrolabe.parsed.siZhu,
       palaces: astrolabe.parsed.palaces,
-      rawAstrolabe: astrolabe.raw, // 传递原始命盘数据
+      rawAstrolabe: astrolabe.raw,
     };
 
-    // 5. 生成报告 (检查是否有 API Key)
+    // 6. 生成报告
     const hasApiKey = process.env.DOUBAO_API_KEY && process.env.DOUBAO_API_KEY.length > 0;
     const reportResult = hasApiKey
       ? await generateReport(llmInput)
       : generateMockReport(llmInput);
 
-    // 6. 存储到数据库 (如果数据库可用)
+    // 7. 存储到数据库
     let reportId = `test-${Date.now()}`;
     try {
       const report = await prisma.report.create({
@@ -146,16 +210,16 @@ export async function POST(request: NextRequest) {
       });
       reportId = report.id;
     } catch (dbError) {
-      // 数据库不可用时，使用临时 ID 继续返回结果
       console.log('Database not available, using temporary ID');
     }
 
-    // 7. 返回结果
+    // 8. 返回结果
     return NextResponse.json({
       success: true,
       reportId,
       coreIdentity: reportResult.coreIdentity,
       report: reportResult.report,
+      cached: false,
       calculatedLongitude: longitude,
       astrolabe: {
         mingGong: astrolabe.parsed.mingGong,
