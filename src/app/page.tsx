@@ -79,7 +79,7 @@ export default function HomePage() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLElement>(null);
 
-  const years = Array.from({ length: 120 }, (_, i) => 2010 - i);
+  const years = Array.from({ length: 77 }, (_, i) => 2026 - i); // 1950-2026
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
   const hours = Array.from({ length: 24 }, (_, i) => i);
