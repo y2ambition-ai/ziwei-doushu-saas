@@ -16,6 +16,7 @@ export interface LLMConfig {
 export interface GenerateReportInput {
   email: string;
   gender: string;
+  country?: string; // ISO country code: CN, US, SG, MY, etc.
   birthDate: string;
   birthTime: number;
   birthCity: string;
@@ -72,7 +73,27 @@ Your clients are primarily:
 - Overseas Chinese (Chinese diaspora in US, Europe, Southeast Asia, etc.)
 - People seeking guidance for life decisions
 
-**IMPORTANT**: Do NOT assume the client lives in China. Avoid China-specific references like "高考" (Gaokao), "考公" (civil service exam), "公务员" (government official). Instead use universal terms like "academic exams", "entrance exams", "public sector careers", "government positions".
+## 🌍 LOCALIZATION - CRITICAL
+
+You will receive the client's country code. You MUST tailor your advice to their LOCAL context:
+
+| Country | Education Terms | Career Examples | Currency |
+|---------|-----------------|-----------------|----------|
+| CN (China) | 高考、考研、考公 | 公务员、国企、互联网大厂 | 人民币 |
+| US (USA) | SAT/ACT、大学申请、Graduate School | Tech companies、Finance、Startups | 美元 USD |
+| SG (Singapore) | A-Level、O-Level、Polytechnic | Banking、Tech、MNCs | 新币 SGD |
+| MY (Malaysia) | STPM、UEC、大学申请 | 商业、制造业 | 马币 MYR |
+| CA (Canada) | High School、University Application | Tech、Healthcare、Public Service | 加币 CAD |
+| AU (Australia) | ATAR、University Application | Mining、Agriculture、Services | 澳币 AUD |
+| UK (Britain) | A-Level、GCSE、UCAS | Finance、Law、NHS | 英镑 GBP |
+| NZ (New Zealand) | NCEA、University | Agriculture、Tourism | 纽币 NZD |
+| JP (Japan) | センター試験、大学受験 | Manufacturing、Tech | 日元 JPY |
+| KR (Korea) | 수능、대학입시 | Tech、Manufacturing | 韩元 KRW |
+| TW (Taiwan) | 学测、指考 | 科技业、制造业 | 台币 TWD |
+| HK (Hong Kong) | DSE、JUPAS | Finance、Trading | 港币 HKD |
+| OTHER | 本地教育体系 | 当地主流行业 | 当地货币 |
+
+**RULE**: If country is NOT China (CN), do NOT use "高考", "考公", "公务员" etc. Use LOCAL equivalents!
 
 ## Your Professional Identity
 
@@ -91,18 +112,15 @@ You are BOTH a technical expert AND a compassionate advisor:
 - **Practical Advice**: Give 2-3 specific things they can DO, not just abstract predictions
 - **Warm but Not Overly Friendly**: You're a respected master, not their best friend
 - **Bilingual**: Chinese primary, English terms in parentheses for key concepts
-- **Universal Appeal**: Use examples and advice that work for ANYONE, ANYWHERE in the world
+- **Local Relevance**: Use LOCAL examples based on their country!
 
 ## Critical Balance
 
-❌ DON'T: Say "2026年高考考个好大学" (pass Gaokao and get into a good university)
-✅ DO: Say "2026年是学业关键年，适合报考理想的大学或专业" (2026 is a key academic year, ideal for applying to your desired university or program)
+❌ DON'T: Use China-specific terms for non-China clients
+✅ DO: Use country-appropriate terminology
 
-❌ DON'T: Say "考公务员上岸率高" (high chance of passing civil service exam)
-✅ DO: Say "适合进入公共部门或稳定的大型机构工作" (suitable for working in public sector or stable large organizations)
-
-❌ DON'T: Say "买房升值" (buy house and it will appreciate)
-✅ DO: Say "不动产投资运势好，房产有望增值" (good fortune in real estate investment, property value likely to increase)
+❌ DON'T: Say "买房升值" universally
+✅ DO: Consider local real estate market context (e.g., "property investment" for US, "HDB/condo" for Singapore)
 
 ## Structure Your Reading (9 Core Sections)
 
@@ -173,6 +191,9 @@ function buildUserPrompt(input: GenerateReportInput): string {
   const shichenName = getShichenName(input.birthTime);
   const genderEn = input.gender === 'male' ? 'Male (男)' : 'Female (女)';
 
+  // 国家信息处理
+  const countryInfo = getCountryInfo(input.country || 'OTHER');
+
   // 如果有原始命盘数据，使用完整格式化
   let astrolabeData = '';
   if (input.rawAstrolabe) {
@@ -196,6 +217,7 @@ ${formatPalaces(input.palaces)}`;
 | 项目 | 内容 |
 |------|------|
 | 性别 | ${genderEn} |
+| **所在国家** | **${countryInfo.name}** |
 | 出生日期 | ${input.birthDate} |
 | 出生时辰 | ${shichenName} |
 | 出生地 | ${input.birthCity} |
@@ -209,6 +231,19 @@ ${formatPalaces(input.palaces)}`;
 ## 完整命盘数据 (Complete Chart Data)
 
 ${astrolabeData}
+
+---
+
+## 🌍 本地化要求 (LOCALIZATION - CRITICAL)
+
+**客户所在国家**: ${countryInfo.name} (${input.country || 'OTHER'})
+
+**你必须使用以下本地化术语**:
+- 教育相关: ${countryInfo.education}
+- 职业相关: ${countryInfo.career}
+- 货币单位: ${countryInfo.currency}
+
+${input.country !== 'CN' ? `**重要**: 该客户不在中国的教育/职业体系中，请勿使用"高考"、"考公"、"公务员"等中国特有术语！使用上面列出的本地化术语替代。` : ''}
 
 ---
 
@@ -274,6 +309,31 @@ function getShichenName(hour: number): string {
     11: '亥时 (21:00-23:00)',
   };
   return shichenMap[hour] || '未知时辰';
+}
+
+// 国家信息映射
+function getCountryInfo(countryCode: string): { name: string; education: string; career: string; currency: string } {
+  const countryMap: Record<string, { name: string; education: string; career: string; currency: string }> = {
+    'CN': { name: '中国 China', education: '高考、考研、考公、大学申请', career: '公务员、国企、互联网大厂、事业单位', currency: '人民币 CNY' },
+    'US': { name: '美国 United States', education: 'SAT/ACT、大学申请 College Application、研究生申请 Graduate School', career: '科技公司 Tech、金融 Finance、创业 Startup、医疗 Healthcare', currency: '美元 USD' },
+    'SG': { name: '新加坡 Singapore', education: 'A-Level、O-Level、理工学院 Polytechnic、大学申请', career: '金融 Banking、科技 Tech、跨国公司 MNC', currency: '新币 SGD' },
+    'MY': { name: '马来西亚 Malaysia', education: 'STPM、UEC、大学申请', career: '商业 Business、制造业 Manufacturing、服务业 Services', currency: '马币 MYR' },
+    'CA': { name: '加拿大 Canada', education: '高中毕业 High School、大学申请 University Application', career: '科技 Tech、医疗 Healthcare、公共服务 Public Service', currency: '加币 CAD' },
+    'AU': { name: '澳大利亚 Australia', education: 'ATAR、大学申请 University Application', career: '矿业 Mining、农业 Agriculture、服务业 Services', currency: '澳币 AUD' },
+    'UK': { name: '英国 United Kingdom', education: 'A-Level、GCSE、UCAS申请', career: '金融 Finance、法律 Law、医疗 NHS', currency: '英镑 GBP' },
+    'NZ': { name: '新西兰 New Zealand', education: 'NCEA、大学申请', career: '农业 Agriculture、旅游 Tourism', currency: '纽币 NZD' },
+    'JP': { name: '日本 Japan', education: 'センター試験、大学受験', career: '制造业 Manufacturing、科技 Tech', currency: '日元 JPY' },
+    'KR': { name: '韩国 South Korea', education: '수능、대학입시', career: '科技 Tech、制造业 Manufacturing', currency: '韩元 KRW' },
+    'TW': { name: '台湾 Taiwan', education: '学测、指考、大学申请', career: '科技业 Tech、制造业 Manufacturing', currency: '台币 TWD' },
+    'HK': { name: '香港 Hong Kong', education: 'DSE、JUPAS', career: '金融 Finance、贸易 Trading', currency: '港币 HKD' },
+  };
+
+  return countryMap[countryCode] || {
+    name: '其他地区 Other Regions',
+    education: '本地教育体系 Local Education System',
+    career: '当地主流行业 Local Industries',
+    currency: '当地货币 Local Currency'
+  };
 }
 
 function formatPalaces(palaces: GenerateReportInput['palaces']): string {

@@ -38,6 +38,7 @@ model Report {
   // User input
   email         String
   gender        String   // "male" | "female"
+  country       String?  // ISO country code: CN, US, SG, MY, CA, AU, UK, etc.
   birthDate     String   // YYYY-MM-DD
   birthTime     Int      // 0-23 hour
   birthMinute   Int      @default(0)

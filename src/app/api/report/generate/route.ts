@@ -26,6 +26,7 @@ const CACHE_HOURS = 24; // 缓存有效期（小时）
 interface GenerateRequest {
   email: string;
   gender: 'male' | 'female';
+  country?: string; // ISO country code: CN, US, SG, MY, etc.
   birthDate: string; // YYYY-MM-DD
   birthTime: number; // 0-23
   birthMinute: number; // 0-59
@@ -200,6 +201,7 @@ export async function POST(request: NextRequest) {
         data: {
           email: body.email,
           gender: body.gender,
+          country: body.country || 'OTHER',
           birthDate: body.birthDate,
           birthTime: body.birthTime,
           birthCity: `经度${longitude.toFixed(1)}°`,
