@@ -159,6 +159,7 @@ export default function ReportContent({ report }: ReportContentProps) {
   const [coreIdentity, setCoreIdentity] = useState(report.coreIdentity);
   const [loading, setLoading] = useState(!report.aiReport || report.aiReport.length < 100);
   const [error, setError] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
 
   // 如果没有AI报告，自动请求生成
   useEffect(() => {
@@ -186,6 +187,7 @@ export default function ReportContent({ report }: ReportContentProps) {
 
       setAiReport(data.report);
       setCoreIdentity(data.coreIdentity);
+      setEmailSent(data.emailSent || false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'AI报告生成失败');
     } finally {
@@ -267,6 +269,20 @@ export default function ReportContent({ report }: ReportContentProps) {
                 <p className="text-[#B8925A] text-xs tracking-widest mb-3">核心身份</p>
                 <p className="text-lg leading-relaxed">{coreIdentity}</p>
               </motion.div>
+
+              {/* Email Sent Notification */}
+              {emailSent && (
+                <motion.div
+                  className="mb-8 p-4 bg-green-50 border border-green-200 text-center"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <p className="text-green-700 text-sm">
+                    ✓ 报告已发送至您的邮箱 {report.email}
+                  </p>
+                </motion.div>
+              )}
 
               {/* Report Content */}
               <motion.div

@@ -10,6 +10,7 @@ import { generateReport, generateMockReport } from '@/lib/llm';
 import { prisma } from '@/lib/db';
 import { generateAstrolabe } from '@/lib/ziwei/wrapper';
 import { captureAIGenerationError, captureApiError } from '@/lib/monitoring';
+import { sendReportEmail } from '@/lib/email';
 
 // ─── POST Handler ──────────────────────────────────────────────────────────────
 
@@ -105,13 +106,27 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 7. 不发送邮件，仅网页端查看（数据7天后自动删除）
+    // 7. 发送邮件通知用户（Resend 免费版每月 3000 封）
+    let emailSent = false;
+    try {
+      const emailResult = await sendReportEmail({
+        to: report.email,
+        reportId: reportId,
+        coreIdentity: reportResult.coreIdentity,
+      });
+      emailSent = emailResult.success;
+      console.log('Email sent:', emailSent, emailResult.messageId || emailResult.error);
+    } catch (emailError) {
+      console.error('Failed to send email:', emailError);
+      // 不因为邮件失败而影响报告生成
+    }
 
     return NextResponse.json({
       success: true,
       cached: false,
       coreIdentity: reportResult.coreIdentity,
       report: reportResult.report,
+      emailSent,
     });
   } catch (error) {
     console.error('AI report generation error:', error);
