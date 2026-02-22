@@ -76,7 +76,6 @@ function LuckyElementsCard({ report }: { report: string }) {
       const colors = colorMatch[1].split(/[、,，]/).map(c => c.trim()).filter(Boolean);
       return colors.slice(0, 3);
     }
-    // 备用匹配
     const altMatch = report.match(/\*\*幸运色[^*]*\*\*[：:]\s*([^\n]+)/);
     if (altMatch) {
       const colors = altMatch[1].split(/[、,，\s]/).map(c => c.trim()).filter(Boolean);
@@ -111,12 +110,24 @@ function LuckyElementsCard({ report }: { report: string }) {
     return '正南、东南';
   };
 
-  const colorMap: Record<string, string> = {
-    '紫色': '#8B5CF6', '金色': '#F59E0B', '绿色': '#10B981', '红色': '#EF4444',
-    '蓝色': '#3B82F6', '白色': '#F3F4F6', '黑色': '#1F2937', '黄色': '#FBBF24',
-    '粉色': '#EC4899', '橙色': '#F97316', '青色': '#06B6D4', '棕色': '#92400E',
-    'Purple': '#8B5CF6', 'Gold': '#F59E0B', 'Green': '#10B981', 'Red': '#EF4444',
-    'Blue': '#3B82F6', 'White': '#F3F4F6', 'Black': '#1F2937', 'Yellow': '#FBBF24',
+  const colorMap: Record<string, { hex: string; gradient: string }> = {
+    '紫色': { hex: '#8B5CF6', gradient: 'from-violet-500 to-purple-600' },
+    '金色': { hex: '#F59E0B', gradient: 'from-amber-400 to-yellow-500' },
+    '绿色': { hex: '#10B981', gradient: 'from-emerald-400 to-green-500' },
+    '红色': { hex: '#EF4444', gradient: 'from-red-400 to-rose-500' },
+    '蓝色': { hex: '#3B82F6', gradient: 'from-blue-400 to-indigo-500' },
+    '白色': { hex: '#F3F4F6', gradient: 'from-gray-100 to-slate-200' },
+    '黑色': { hex: '#1F2937', gradient: 'from-gray-700 to-slate-800' },
+    '黄色': { hex: '#FBBF24', gradient: 'from-yellow-400 to-amber-500' },
+    '粉色': { hex: '#EC4899', gradient: 'from-pink-400 to-rose-500' },
+    '橙色': { hex: '#F97316', gradient: 'from-orange-400 to-amber-500' },
+    '青色': { hex: '#06B6D4', gradient: 'from-cyan-400 to-teal-500' },
+    '棕色': { hex: '#92400E', gradient: 'from-amber-600 to-yellow-700' },
+    'Purple': { hex: '#8B5CF6', gradient: 'from-violet-500 to-purple-600' },
+    'Gold': { hex: '#F59E0B', gradient: 'from-amber-400 to-yellow-500' },
+    'Green': { hex: '#10B981', gradient: 'from-emerald-400 to-green-500' },
+    'Red': { hex: '#EF4444', gradient: 'from-red-400 to-rose-500' },
+    'Blue': { hex: '#3B82F6', gradient: 'from-blue-400 to-indigo-500' },
   };
 
   const colors = parseLuckyColors();
@@ -125,71 +136,94 @@ function LuckyElementsCard({ report }: { report: string }) {
 
   return (
     <motion.div
-      className="bg-gradient-to-br from-[#1A0F05] via-[#2D1F12] to-[#1A0F05] p-6 md:p-8 mb-8 print:mb-4"
+      className="mb-8 print:mb-4"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.3 }}
     >
+      {/* 标题 */}
       <div className="text-center mb-6">
-        <p className="text-[#B8925A] text-xs tracking-[0.3em] mb-2">✦ LUCKY ELEMENTS ✦</p>
-        <p className="text-[#F7F3EC]/80 text-sm">您的专属幸运元素</p>
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#B8925A]/10 rounded-full">
+          <span className="text-[#B8925A]">✦</span>
+          <span className="text-[#8B4513] text-xs tracking-[0.2em] font-medium">Lucky Elements · 专属幸运元素</span>
+          <span className="text-[#B8925A]">✦</span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* 三栏卡片 */}
+      <div className="grid grid-cols-3 gap-4 md:gap-6">
         {/* 幸运色 */}
-        <div className="text-center">
-          <p className="text-[#B8925A]/60 text-xs tracking-wider mb-3">幸运色 LUCKY COLORS</p>
-          <div className="flex justify-center gap-3 mb-2">
-            {colors.map((color, i) => (
-              <motion.div
-                key={i}
-                className="w-12 h-12 rounded-full shadow-lg border-2 border-[#F7F3EC]/20"
-                style={{ backgroundColor: colorMap[color] || colorMap['Purple'] }}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.5 + i * 0.1, type: 'spring' }}
-              />
-            ))}
+        <motion.div
+          className="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-[#B8925A]/10 text-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <p className="text-[#8B4513]/70 text-[10px] md:text-xs tracking-wider mb-3">幸运色</p>
+          <div className="flex justify-center gap-2 md:gap-3 mb-3">
+            {colors.map((color, i) => {
+              const colorInfo = colorMap[color] || colorMap['紫色'];
+              return (
+                <motion.div
+                  key={i}
+                  className={`w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br ${colorInfo.gradient} shadow-md`}
+                  initial={{ scale: 0, rotate: -20 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.5 + i * 0.1, type: 'spring', stiffness: 200 }}
+                  title={color}
+                />
+              );
+            })}
           </div>
-          <p className="text-[#F7F3EC]/70 text-xs">{colors.join(' · ')}</p>
-        </div>
+          <p className="text-[#1A0F05]/80 text-[10px] md:text-xs font-medium">{colors.join(' · ')}</p>
+        </motion.div>
 
         {/* 幸运数字 */}
-        <div className="text-center">
-          <p className="text-[#B8925A]/60 text-xs tracking-wider mb-3">幸运数字 LUCKY NUMBERS</p>
-          <div className="flex justify-center gap-3 mb-2">
+        <motion.div
+          className="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-[#B8925A]/10 text-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <p className="text-[#8B4513]/70 text-[10px] md:text-xs tracking-wider mb-3">幸运数字</p>
+          <div className="flex justify-center gap-2 md:gap-3 mb-3">
             {numbers.map((num, i) => (
               <motion.div
                 key={i}
-                className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#B8925A] to-[#8B4513] flex items-center justify-center shadow-lg"
-                initial={{ scale: 0, rotate: -10 }}
+                className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-[#B8925A] to-[#8B4513] flex items-center justify-center shadow-md"
+                initial={{ scale: 0, rotate: 10 }}
                 animate={{ scale: 1, rotate: 0 }}
-                transition={{ delay: 0.6 + i * 0.1, type: 'spring' }}
+                transition={{ delay: 0.6 + i * 0.1, type: 'spring', stiffness: 200 }}
               >
-                <span className="text-[#F7F3EC] text-xl font-bold">{num}</span>
+                <span className="text-white text-sm md:text-lg font-bold">{num}</span>
               </motion.div>
             ))}
           </div>
-          <p className="text-[#F7F3EC]/70 text-xs">{numbers.join(' · ')}</p>
-        </div>
+          <p className="text-[#1A0F05]/80 text-[10px] md:text-xs font-medium">{numbers.join(' · ')}</p>
+        </motion.div>
 
         {/* 幸运方位 */}
-        <div className="text-center">
-          <p className="text-[#B8925A]/60 text-xs tracking-wider mb-3">幸运方位 LUCKY DIRECTIONS</p>
-          <div className="flex justify-center items-center mb-2">
+        <motion.div
+          className="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-[#B8925A]/10 text-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <p className="text-[#8B4513]/70 text-[10px] md:text-xs tracking-wider mb-3">幸运方位</p>
+          <div className="flex justify-center mb-3">
             <motion.div
-              className="w-16 h-16 rounded-full border-2 border-[#B8925A]/50 flex items-center justify-center relative"
-              initial={{ rotate: -180 }}
-              animate={{ rotate: 0 }}
-              transition={{ duration: 0.8, delay: 0.7 }}
+              className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-[#B8925A]/20 to-[#8B4513]/20 flex items-center justify-center border-2 border-[#B8925A]/30"
+              initial={{ rotate: -180, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.7 }}
             >
-              <span className="text-[#F7F3EC] text-lg">🧭</span>
-              {/* 方位指针 */}
-              <div className="absolute -top-1 w-0 h-0 border-l-4 border-r-4 border-b-8 border-l-transparent border-r-transparent border-b-[#B8925A]" />
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-[#8B4513]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
             </motion.div>
           </div>
-          <p className="text-[#F7F3EC]/70 text-xs">{directions}</p>
-        </div>
+          <p className="text-[#1A0F05]/80 text-[10px] md:text-xs font-medium">{directions}</p>
+        </motion.div>
       </div>
     </motion.div>
   );

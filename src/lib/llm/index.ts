@@ -156,8 +156,9 @@ You are BOTH a technical expert AND a compassionate advisor:
 ### 7. 情感姻缘 Love & Marriage (200-250字)
 夫妻宫分析 + 理想伴侣特质(3点具体描述) + 最佳婚运时期
 
-### 8. 今年流年 Annual Fortune (300-400字)
-流年四化解读 + 12个月运势表(标注吉凶) + 3个关键月份详细分析
+### 8. 今年流年 Annual Fortune (250-300字)
+流年四化解读 + **仅指出3-4个需要特别注意的月份**（不要列出12个月表格）
+格式：直接描述哪些月份需要特别注意，以及具体原因和建议
 
 ### 9. 大师建议 Master's Guidance (150-200字)
 3条最核心的人生建议，具体可执行
@@ -190,6 +191,7 @@ import { formatAstrolabeForLLM } from '../ziwei/wrapper';
 function buildUserPrompt(input: GenerateReportInput): string {
   const shichenName = getShichenName(input.birthTime);
   const genderEn = input.gender === 'male' ? 'Male (男)' : 'Female (女)';
+  const currentYear = new Date().getFullYear(); // 获取当前年份
 
   // 国家信息处理
   const countryInfo = getCountryInfo(input.country || 'OTHER');
@@ -221,6 +223,7 @@ ${formatPalaces(input.palaces)}`;
 | 出生日期 | ${input.birthDate} |
 | 出生时辰 | ${shichenName} |
 | 出生地 | ${input.birthCity} |
+| **当前年份** | **${currentYear}年** |
 
 ## 四柱八字 (Four Pillars / Bazi)
 
@@ -275,8 +278,11 @@ ${input.country !== 'CN' ? `**重要**: 该客户不在中国的教育/职业体
 ### 7. 情感姻缘 (200-250字)
 分析夫妻宫，用3点具体描述理想伴侣的特质，指出最佳婚运时期。
 
-### 8. 今年流年 (300-400字)
-解读流年四化，用表格展示12个月运势（标注吉凶等级），详细分析3个关键月份。
+### 8. 今年流年 (${currentYear}年) (250-300字)
+解读流年四化，**仅指出3-4个需要特别注意的月份**（不要列出12个月表格）。
+直接描述哪些月份需要特别注意，以及具体原因和建议。
+
+**重要：当前年份是${currentYear}年，不是2024年！所有流年分析必须基于${currentYear}年。**
 
 ### 9. 大师建议 (150-200字)
 给出3条最核心的人生建议，格式：
