@@ -146,7 +146,7 @@ function renderMarkdown(text: string) {
 // ─── Loading Animation ─────────────────────────────────────────────────────────
 
 function LoadingAnimation() {
-  const [countdown, setCountdown] = useState(120);  // 2分钟倒计时
+  const [countdown, setCountdown] = useState(300);  // 5分钟倒计时
 
   useEffect(() => {
     const timer = setInterval(() => {
