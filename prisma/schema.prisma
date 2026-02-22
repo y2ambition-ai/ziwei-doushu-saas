@@ -54,6 +54,10 @@ model Report {
   aiReport      String?  // Markdown format AI interpretation
   coreIdentity  String?  // Core identity card, e.g. "Ming Gong: ZiWei·QiSha"
 
+  // API call tracking (防止重复调用)
+  apiCalledAt   DateTime? // API调用时间
+  apiRetryCount Int      @default(0) // 重试次数
+
   // Payment tracking
   paidAt        DateTime? // 付费时间，用于7天免费复用判断
 

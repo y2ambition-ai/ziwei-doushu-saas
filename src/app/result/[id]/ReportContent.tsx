@@ -171,6 +171,30 @@ function LoadingAnimation() {
   );
 }
 
+// ─── Waiting Animation (for retry cooldown) ─────────────────────────────────────
+
+function WaitingAnimation({ retryAfter }: { retryAfter: number }) {
+  const minutes = Math.floor(retryAfter / 60);
+  const seconds = retryAfter % 60;
+
+  return (
+    <div className="text-center py-16">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+        className="inline-block text-4xl text-[#B8925A] mb-6"
+      >
+        ☯
+      </motion.div>
+      <p className="text-[#B8925A] tracking-widest text-sm mb-2">报告正在生成中</p>
+      <p className="text-[#1A0F05]/40 text-xs mb-4">请耐心等待，系统会自动完成...</p>
+      <p className="text-[#8B4513] text-sm font-medium">
+        自动刷新倒计时：{minutes}:{seconds.toString().padStart(2, '0')}
+      </p>
+    </div>
+  );
+}
+
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export default function ReportContent({ report }: ReportContentProps) {
@@ -178,6 +202,8 @@ export default function ReportContent({ report }: ReportContentProps) {
   const [coreIdentity, setCoreIdentity] = useState(report.coreIdentity);
   const [loading, setLoading] = useState(!report.aiReport || report.aiReport.length < 100);
   const [error, setError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [retryAfter, setRetryAfter] = useState(0);
 
   // 如果没有AI报告，自动请求生成
   useEffect(() => {
@@ -186,9 +212,22 @@ export default function ReportContent({ report }: ReportContentProps) {
     }
   }, [report.id]);
 
+  // 倒计时结束后重试
+  useEffect(() => {
+    if (retryAfter > 0) {
+      const timer = setTimeout(() => {
+        setRetryAfter(retryAfter - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (generating && retryAfter === 0) {
+      generateAIReport();
+    }
+  }, [retryAfter, generating]);
+
   const generateAIReport = async () => {
     setLoading(true);
     setError(null);
+    setGenerating(false);
 
     try {
       const response = await fetch('/api/report/ai-generate', {
@@ -198,6 +237,21 @@ export default function ReportContent({ report }: ReportContentProps) {
       });
 
       const data = await response.json();
+
+      // 处理"正在生成"状态（10分钟内已调用过API）
+      if (data.status === 'generating') {
+        setGenerating(true);
+        setRetryAfter(data.retryAfter || 60);
+        setLoading(false);
+        return;
+      }
+
+      // 处理失败状态
+      if (data.status === 'failed') {
+        setError(data.error || '报告生成失败');
+        setLoading(false);
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'AI报告生成失败');
@@ -211,6 +265,9 @@ export default function ReportContent({ report }: ReportContentProps) {
       setLoading(false);
     }
   };
+
+  // 判断是否显示加载状态
+  const isLoading = loading || generating;
 
   return (
     <div className="min-h-screen bg-[#F7F3EC]">
@@ -268,13 +325,17 @@ export default function ReportContent({ report }: ReportContentProps) {
           )}
 
           {/* Content Area */}
-          {loading ? (
+          {isLoading ? (
             <motion.div
               className="border border-[#B8925A]/20 p-8 md:p-12 print:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <LoadingAnimation />
+              {generating ? (
+                <WaitingAnimation retryAfter={retryAfter} />
+              ) : (
+                <LoadingAnimation />
+              )}
             </motion.div>
           ) : error ? (
             <motion.div
