@@ -106,13 +106,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 7. 发送邮件通知用户（Resend 免费版每月 3000 封）
+    // 7. 发送邮件通知用户（Resend 免费版每月 3000 封，附带 PDF）
     let emailSent = false;
     try {
       const emailResult = await sendReportEmail({
         to: report.email,
         reportId: reportId,
         coreIdentity: reportResult.coreIdentity,
+        report: reportResult.report,
+        birthDate: report.birthDate,
+        birthTime: astrolabe.parsed.solarTime.shichen || '',
+        birthCity: report.birthCity || '',
       });
       emailSent = emailResult.success;
       console.log('Email sent:', emailSent, emailResult.messageId || emailResult.error);

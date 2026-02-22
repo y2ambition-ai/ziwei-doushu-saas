@@ -1,9 +1,10 @@
 /**
  * Resend 邮件服务集成
- * Email delivery for ZiWei SaaS
+ * Email delivery for ZiWei SaaS with PDF attachment
  */
 
 import { Resend } from 'resend';
+import { generateReportPDF, generatePDFFileName } from '@/lib/pdf';
 
 // ─── Configuration ─────────────────────────────────────────────────────────────
 
@@ -21,6 +22,10 @@ export interface SendReportEmailInput {
   to: string;
   reportId: string;
   coreIdentity: string;
+  report: string;
+  birthDate: string;
+  birthTime: string | number;
+  birthCity: string;
 }
 
 export interface SendReportEmailOutput {
@@ -49,7 +54,7 @@ function getReportEmailHtml(input: SendReportEmailInput & { reportUrl: string })
         天命玄机
       </h1>
       <p style="color: #B8925A; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase;">
-        命理报告
+        命理报告已生成
       </p>
     </div>
 
@@ -64,7 +69,7 @@ function getReportEmailHtml(input: SendReportEmailInput & { reportUrl: string })
     <div style="color: #1A0F05; line-height: 1.8;">
       <p style="margin-bottom: 20px;">您好，</p>
       <p style="margin-bottom: 20px;">
-        您的紫微斗数命盘解读报告已经生成完成！
+        您的紫微斗数命盘专业解读报告已生成完成！
       </p>
 
       <!-- Core Identity Card -->
@@ -73,12 +78,22 @@ function getReportEmailHtml(input: SendReportEmailInput & { reportUrl: string })
         <p style="font-size: 16px; margin: 0;">${input.coreIdentity}</p>
       </div>
 
+      <!-- PDF Download Notice -->
+      <div style="background-color: #F0EBE1; padding: 20px; margin: 30px 0; text-align: center; border: 1px solid #B8925A40;">
+        <p style="margin: 0 0 10px 0; font-weight: 600; color: #1A0F05;">
+          📄 PDF 报告已附带在邮件附件中
+        </p>
+        <p style="margin: 0; font-size: 13px; color: #666;">
+          您可以直接下载保存，或点击下方按钮在线查看
+        </p>
+      </div>
+
       <!-- CTA Button -->
       <div style="text-align: center; margin: 40px 0;">
         <a href="${input.reportUrl}"
            style="display: inline-block; background-color: #B8925A; color: #F7F3EC;
                   padding: 15px 40px; text-decoration: none; font-size: 13px; letter-spacing: 0.15em;">
-          查看完整报告
+          在线查看完整报告
         </a>
       </div>
 
@@ -96,7 +111,8 @@ function getReportEmailHtml(input: SendReportEmailInput & { reportUrl: string })
     <!-- Footer -->
     <div style="text-align: center; color: #1A0F0560; font-size: 12px;">
       <p style="margin-bottom: 10px;">
-        本报告基于紫微斗数命理分析，仅供参考。
+        本报告基于紫微斗数命理分析，仅供参考。<br>
+        本网站不保留任何个人信息，数据仅保存7天后自动删除。
       </p>
       <p>
         © 2025 天命玄机 · Taoist Metaphysics
@@ -110,19 +126,22 @@ function getReportEmailHtml(input: SendReportEmailInput & { reportUrl: string })
 
 function getReportEmailText(input: SendReportEmailInput & { reportUrl: string }): string {
   return `
-天命玄机 - 命理报告
+天命玄机 - 命理报告已生成
 
 您好，
 
-您的紫微斗数命盘解读报告已经生成完成！
+您的紫微斗数命盘专业解读报告已生成完成！
 
 【核心身份】
 ${input.coreIdentity}
 
-查看完整报告：
+PDF 报告已附带在邮件附件中，您可以直接下载保存。
+
+在线查看完整报告：
 ${input.reportUrl}
 
 本报告基于紫微斗数命理分析，仅供参考。
+本网站不保留任何个人信息，数据仅保存7天后自动删除。
 
 © 2025 天命玄机
   `.trim();
@@ -131,7 +150,7 @@ ${input.reportUrl}
 // ─── Main Functions ────────────────────────────────────────────────────────────
 
 /**
- * Send report email
+ * Send report email with PDF attachment
  */
 export async function sendReportEmail(
   input: SendReportEmailInput
@@ -141,10 +160,27 @@ export async function sendReportEmail(
   const baseUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
   const reportUrl = `${baseUrl}/result/${input.reportId}`;
 
+  // Generate PDF
+  let pdfBuffer: Buffer | null = null;
+  try {
+    pdfBuffer = await generateReportPDF({
+      email: input.to,
+      birthDate: input.birthDate,
+      birthTime: input.birthTime,
+      birthCity: input.birthCity,
+      coreIdentity: input.coreIdentity,
+      report: input.report,
+      createdAt: new Date().toLocaleString('zh-CN'),
+    });
+  } catch (pdfError) {
+    console.error('PDF generation failed, sending email without attachment:', pdfError);
+  }
+
   // Mock mode for development
   if (!resend) {
     console.log('[Mock Email] Would send email to:', input.to);
     console.log('[Mock Email] Report URL:', reportUrl);
+    console.log('[Mock Email] PDF attached:', !!pdfBuffer);
     return {
       success: true,
       messageId: `mock_${Date.now()}`,
@@ -152,13 +188,38 @@ export async function sendReportEmail(
   }
 
   try {
-    const { data, error } = await resend.emails.send({
+    // Prepare email payload
+    const emailPayload: {
+      from: string;
+      to: string;
+      subject: string;
+      html: string;
+      text: string;
+      attachments?: Array<{
+        filename: string;
+        content: Buffer;
+        contentType: string;
+      }>;
+    } = {
       from: fromEmail,
       to: input.to,
       subject: '您的命理报告已生成 - 天命玄机',
       html: getReportEmailHtml({ ...input, reportUrl }),
       text: getReportEmailText({ ...input, reportUrl }),
-    });
+    };
+
+    // Add PDF attachment if generated successfully
+    if (pdfBuffer) {
+      emailPayload.attachments = [
+        {
+          filename: generatePDFFileName(input.to),
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ];
+    }
+
+    const { data, error } = await resend.emails.send(emailPayload);
 
     if (error) {
       console.error('Resend error:', error);
