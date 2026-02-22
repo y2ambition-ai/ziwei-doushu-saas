@@ -77,22 +77,24 @@ function getShichenName(hour: number): string {
 function renderMarkdown(text: string) {
   return text.split('\n').map((line, i) => {
     if (line.startsWith('# ')) {
+      // 一级标题 - 主要章节，打印时可能分页
       return (
-        <h1 key={i} className="text-xl font-medium text-[#1A0F05] mt-8 mb-4">
+        <h1 key={i} className="text-xl font-medium text-[#1A0F05] mt-8 mb-4 print:mt-6 print:text-base print-section">
           {line.slice(2)}
         </h1>
       );
     }
     if (line.startsWith('## ')) {
+      // 二级标题 - 避免与内容分离
       return (
-        <h2 key={i} className="text-lg font-medium text-[#1A0F05] mt-6 mb-3">
+        <h2 key={i} className="text-lg font-medium text-[#1A0F05] mt-6 mb-3 print:mt-4 print:text-sm print-section">
           {line.slice(3)}
         </h2>
       );
     }
     if (line.startsWith('### ')) {
       return (
-        <h3 key={i} className="text-base font-medium text-[#1A0F05] mt-4 mb-2">
+        <h3 key={i} className="text-base font-medium text-[#1A0F05] mt-4 mb-2 print:mt-3 print:text-xs">
           {line.slice(4)}
         </h3>
       );
@@ -101,7 +103,7 @@ function renderMarkdown(text: string) {
       const match = line.match(/- \*\*(.+?)\*\*:\s*(.+)/);
       if (match) {
         return (
-          <li key={i} className="ml-4 text-sm leading-relaxed mb-2">
+          <li key={i} className="ml-4 text-sm leading-relaxed mb-2 print:text-xs">
             <strong className="text-[#B8925A]">{match[1]}</strong>: {match[2]}
           </li>
         );
@@ -109,15 +111,18 @@ function renderMarkdown(text: string) {
     }
     if (line.startsWith('- ')) {
       return (
-        <li key={i} className="ml-4 text-sm leading-relaxed">
+        <li key={i} className="ml-4 text-sm leading-relaxed print:text-xs">
           {line.slice(2)}
         </li>
       );
     }
     if (line.startsWith('|') && !line.includes('---')) {
       const cells = line.split('|').filter(Boolean);
+      // 根据列数动态调整
+      const colCount = cells.length;
+      const gridCols = colCount <= 2 ? 'grid-cols-2' : colCount <= 4 ? 'grid-cols-4' : 'grid-cols-6';
       return (
-        <div key={i} className="grid grid-cols-4 gap-2 py-2 text-sm border-b border-[#B8925A]/10">
+        <div key={i} className={`${gridCols} gap-2 py-2 text-sm border-b border-[#B8925A]/10 print:text-xs print-section`}>
           {cells.map((cell, j) => (
             <span key={j} className="text-center">{cell.trim()}</span>
           ))}
@@ -129,7 +134,7 @@ function renderMarkdown(text: string) {
     }
     if (line.trim()) {
       return (
-        <p key={i} className="text-sm leading-relaxed mb-3 text-[#1A0F05]/80">
+        <p key={i} className="text-sm leading-relaxed mb-3 text-[#1A0F05]/80 print:text-xs print:mb-2">
           {line}
         </p>
       );
@@ -321,10 +326,10 @@ export default function ReportContent({ report }: ReportContentProps) {
             <Divider />
           </div>
 
-          {/* 命盘显示 - 打印时也显示 */}
+          {/* 命盘显示 - 打印时单独一页 */}
           {report.rawAstrolabe && (
             <motion.div
-              className="mb-8 print:break-before-page"
+              className="mb-8 print-chart-container print:mb-0"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.1 }}
@@ -368,9 +373,9 @@ export default function ReportContent({ report }: ReportContentProps) {
             </motion.div>
           ) : (
             <>
-              {/* Core Identity Card */}
+              {/* Core Identity Card - 打印时紧跟命盘之后 */}
               <motion.div
-                className="mb-8 p-6 bg-[#1A0F05] text-[#F7F3EC] text-center print:break-inside-avoid"
+                className="mb-8 p-6 bg-[#1A0F05] text-[#F7F3EC] text-center print-identity-card"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
@@ -379,14 +384,14 @@ export default function ReportContent({ report }: ReportContentProps) {
                 <p className="text-base leading-relaxed">{coreIdentity}</p>
               </motion.div>
 
-              {/* Report Content */}
+              {/* Report Content - 允许自然分页 */}
               <motion.div
-                className="border border-[#B8925A]/20 p-6 md:p-10 print:break-inside-avoid"
+                className="border border-[#B8925A]/20 p-6 md:p-10"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
               >
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-sm max-w-none print:prose-base">
                   {renderMarkdown(aiReport)}
                 </div>
               </motion.div>

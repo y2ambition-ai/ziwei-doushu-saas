@@ -59,51 +59,184 @@ body {
   /* A4 纸张设置 */
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 15mm 12mm;
+  }
+
+  @page :first {
+    margin-top: 10mm;
   }
 
   html, body {
     width: 210mm !important;
-    height: 297mm !important;
+    height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     background: white !important;
-    font-size: 10px !important;
+    font-size: 11px !important;
+    line-height: 1.6 !important;
     overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* 隐藏不需要打印的元素 */
   nav, footer, header, button, .no-print,
   [class*="motion"]:not(.print-keep),
-  a[href^="/"] {
+  a[href^="/"],
+  .print\:hidden {
     display: none !important;
   }
 
   /* 打印时保留链接但不显示URL */
   a {
     text-decoration: none !important;
+    color: inherit !important;
   }
   a[href^="http"]::after {
     display: none !important;
   }
 
-  /* 命盘页面打印优化 */
-  .print-chart {
-    width: 190mm !important;
-    max-width: 190mm !important;
-    margin: 0 auto !important;
-    padding: 0 !important;
+  /* ─── 命盘打印优化：单独一页 ─── */
+  .print-break-before {
+    page-break-before: always !important;
+    break-before: page !important;
   }
 
-  /* 缩放整个页面以适应A4 */
-  body > * {
-    transform: scale(0.85) !important;
-    transform-origin: top center !important;
+  .print-break-after {
+    page-break-after: always !important;
+    break-after: page !important;
   }
 
-  /* 强制单页打印 */
-  .page-break-avoid {
+  /* 命盘容器 */
+  .print-chart-container {
+    page-break-after: always !important;
+    break-after: page !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 5mm !important;
+  }
+
+  /* 命盘内部避免分页 */
+  .print-chart-container * {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  /* ─── AI报告分页优化 ─── */
+
+  /* 每个章节避免在中间分页 */
+  .print-section {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 8mm !important;
+  }
+
+  /* 标题不要与内容分离 */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* 段落优化 */
+  p {
+    orphans: 3 !important;
+    widows: 3 !important;
+  }
+
+  /* 表格避免跨页 */
+  table {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* 列表优化 */
+  ul, ol {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  li {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* ─── 核心身份卡片打印样式 ─── */
+  .print-identity-card {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    margin: 5mm 0 !important;
+    padding: 4mm !important;
+    background: #f5f5f5 !important;
+    border: 1px solid #ccc !important;
+  }
+
+  /* ─── 字体和间距优化 ─── */
+  .prose {
+    font-size: 11px !important;
+    line-height: 1.7 !important;
+    max-width: 100% !important;
+  }
+
+  .prose h1 {
+    font-size: 16px !important;
+    margin-top: 8mm !important;
+    margin-bottom: 4mm !important;
+    page-break-before: auto !important;
+  }
+
+  .prose h2 {
+    font-size: 14px !important;
+    margin-top: 6mm !important;
+    margin-bottom: 3mm !important;
+  }
+
+  .prose h3 {
+    font-size: 12px !important;
+    margin-top: 5mm !important;
+    margin-bottom: 2mm !important;
+  }
+
+  .prose p {
+    margin-bottom: 3mm !important;
+  }
+
+  /* 表格打印样式 */
+  .prose table {
+    font-size: 9px !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 3mm 0 !important;
+  }
+
+  .prose th, .prose td {
+    border: 1px solid #ddd !important;
+    padding: 1.5mm 2mm !important;
+  }
+
+  /* ─── 页面内容区域 ─── */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* 移除动画效果 */
+  * {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+
+  /* 确保颜色正确打印 */
+  .text-\\[\\#B8925A\\], .text-\\[\\#8B4513\\] {
+    color: #333 !important;
+  }
+
+  .border-\\[\\#B8925A\\] {
+    border-color: #999 !important;
   }
 }

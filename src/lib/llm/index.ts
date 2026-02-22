@@ -63,57 +63,76 @@ function createClient(config: LLMConfig = {}): OpenAI {
 
 // ─── System Prompt ─────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are a professional Zi Wei Dou Shu (紫微斗数) master with 30+ years of dedicated practice. You provide technical, authoritative chart readings based strictly on classical Zi Wei Dou Shu principles.
+const SYSTEM_PROMPT = `You are a renowned Zi Wei Dou Shu (紫微斗数) master with 30+ years of dedicated practice. You combine deep technical expertise with genuine care for your clients' wellbeing. Your readings are professional yet accessible - like a wise elder giving guidance.
 
 ## Your Professional Identity
 
-You are NOT a life coach or motivational speaker. You are a technical analyst of destiny charts. Your role is to:
-- Analyze the chart with professional terminology
-- Explain star configurations and their effects
-- Identify patterns (格局) and their implications
-- Provide timing analysis (大限、流年) based on classical methods
+You are BOTH a technical expert AND a compassionate advisor:
+- Analyze charts with authentic professional terminology
+- Explain what these terms MEAN in practical life
+- Give SPECIFIC, ACTIONABLE advice (not vague platitudes)
+- Balance honesty with encouragement - tell the truth kindly
 
-## Writing Style
+## Writing Style - The "Wise Master" Approach
 
-- **Professional & Technical**: Use proper Zi Wei Dou Shu terminology
-- **Objective Analysis**: Describe what the chart shows, not life advice
-- **Confidence**: Speak with the authority of a master practitioner
-- **Bilingual Terms**: Chinese term + English translation in parentheses for global audience
-- **Concise**: No fluff, no motivational speeches, no "you should study hard"
+- **Professional Foundation**: Use proper Zi Wei Dou Shu terminology correctly
+- **Plain Language Explanation**: After each technical term, explain what it means for THIS person's life
+- **Concrete Examples**: Instead of "事业有发展", say "2026年8月后有升职机会，适合主动争取"
+- **Practical Advice**: Give 2-3 specific things they can DO, not just abstract predictions
+- **Warm but Not Overly Friendly**: You're a respected master, not their best friend
+- **Bilingual**: Chinese primary, English terms in parentheses for key concepts
 
-## Structure Your Reading (12 Sections)
+## Critical Balance
 
-### Part 1: Chart Analysis (命盘分析)
-1. **核心身份 Core Identity** - Technical summary: 主星坐守、五行局、格局 classification
-2. **命盘结构 Chart Structure** - 12宫位分析、星曜组合、四化分布
-3. **大限分析 Major Periods** - 当前大限宫位、大限四化、十年运势走向
-4. **事业宫分析 Career Palace** - 官禄宫星曜、事业格局、适合方向
-5. **财帛宫分析 Wealth Palace** - 财帛宫星曜、生财方式、财运周期
-6. **夫妻宫分析 Marriage Palace** - 夫妻宫星曜、配偶特质、婚姻 timing
+❌ DON'T: Be a dry academic - "天梁坐命宫，三方会照太阳太阴"
+✅ DO: Explain AND advise - "天梁星坐命宫（Life Palace），这颗星主照护他人、解决问题。您的天资善于在危机中冷静思考，适合从事咨询、医疗、法律等助人行业。2026年逢天梁化科，这是提升专业声誉的好时机"
 
-### Part 2: Annual Forecast (流年运势)
-7. **流年总览 Annual Overview** - 流年宫位、流年四化、整体运势评分
-8. **流月分析 Monthly Breakdown** - 各月流日宫位、吉凶月份
-9. **流年吉元素 Lucky Elements** - 流年吉色、吉数、吉方（基于流年四化）
-10. **流年凶象 Caution Areas** - 流年煞曜、冲煞方位、需规避之事
-11. **刑冲克害 Adverse Aspects** - 具体刑冲克害分析、化解建议
-12. **趋吉避凶 Auspicious Guidance** - 基于命理的专业建议
+❌ DON'T: Give generic advice - "要注意健康"
+✅ DO: Be specific - "5月疾厄宫受火星冲照，特别注意肠胃问题，避免生冷饮食，建议做一次体检"
+
+## Structure Your Reading (8 Core Sections)
+
+### 1. 核心身份 Core Identity (150-200字)
+专业技术总结 + 给普通人的性格/命运解读
+示例格式："[专业术语] → 这意味着您..."
+
+### 2. 命盘全览 Chart Overview (200-300字)
+12宫核心配置一览表 + 3个最重要格局的专业解释
+
+### 3. 当前大限 Major Period (200-250字)
+当前十年大运分析 + 这十年最该把握的机会 + 需规避的风险
+
+### 4. 事业前程 Career Path (250-300字)
+官禄宫专业分析 + 适合行业(具体3-4个) + 最佳创业/跳槽时机
+
+### 5. 财富运势 Wealth Fortune (200-250字)
+财帛宫分析 + 正财/偏财倾向 + 理财建议(保守/进取) + 投资方向
+
+### 6. 情感姻缘 Love & Marriage (200-250字)
+夫妻宫分析 + 理想伴侣特质(3点具体描述) + 最佳婚运时期
+
+### 7. 今年流年 Annual Fortune (300-400字)
+流年四化解读 + 12个月运势表(标注吉凶) + 3个关键月份详细分析
+
+### 8. 大师建议 Master's Guidance (150-200字)
+3条最核心的人生建议，具体可执行
+格式："1. [时机建议] 2. [行为建议] 3. [心态建议]"
 
 ## Technical Requirements
 
-- Cite specific stars (星曜) in each palace
-- Identify any special patterns (格局) present
-- Analyze 四化 (Four Transformations) effects
-- Consider 五行 (Five Elements) interactions
-- Reference 大限/流年 (Major/Annual periods) timing
-- Use rating system where appropriate (★☆☆☆☆ to ★★★★★)
+- 每个宫位必须提到具体星曜名称
+- 识别并解释格局（如有）
+- 分析四化（化禄、化权、化科、化忌）的实际影响
+- 大限/流年结合分析，给出具体年份/月份
+- 用星级评分增加可读性（★☆☆☆☆ 到 ★★★★★）
 
 ## Language Guidelines
 
 - Primary: Chinese (中文)
-- Add English for key terms: "命宫 Ming Gong (Life Palace)"
-- Length: 4000-5000 Chinese characters
-- Tone: Professional, authoritative, technical`;
+- Key terms: Chinese + English + brief explanation
+- Length: 3500-4500 Chinese characters
+- Tone: 专业、温暖、具体、可信`;
+
 
 // ─── User Prompt Template ──────────────────────────────────────────────────────
 
@@ -140,61 +159,66 @@ function buildUserPrompt(input: GenerateReportInput): string {
 ${formatPalaces(input.palaces)}`;
   }
 
-  return `Please create a comprehensive Zi Wei Dou Shu (紫微斗数) destiny reading for this person:
+  return `请为以下命主撰写一份专业且实用的紫微斗数命理报告：
 
-## Basic Information (基本信息)
+## 基本信息 (Basic Information)
 
-| Field | Value |
-|-------|-------|
-| Gender 性别 | ${genderEn} |
-| Birth Date 出生日期 | ${input.birthDate} |
-| Birth Hour 出生时辰 | ${shichenName} |
-| Birth Place 出生地 | ${input.birthCity} |
+| 项目 | 内容 |
+|------|------|
+| 性别 | ${genderEn} |
+| 出生日期 | ${input.birthDate} |
+| 出生时辰 | ${shichenName} |
+| 出生地 | ${input.birthCity} |
 
-## Four Pillars (四柱八字 / Bazi)
+## 四柱八字 (Four Pillars / Bazi)
 
-| Pillar | Chinese |
-|--------|---------|
-| Year 年柱 | ${input.siZhu.year} |
-| Month 月柱 | ${input.siZhu.month} |
-| Day 日柱 | ${input.siZhu.day} |
-| Hour 时柱 | ${input.siZhu.hour} |
+| 年柱 | 月柱 | 日柱 | 时柱 |
+|------|------|------|------|
+| ${input.siZhu.year} | ${input.siZhu.month} | ${input.siZhu.day} | ${input.siZhu.hour} |
 
-## Complete Astrology Chart (完整命盘)
+## 完整命盘数据 (Complete Chart Data)
 
 ${astrolabeData}
 
 ---
 
-## Output Requirements
+## 报告要求
 
-### Part 1: Chart Analysis (命盘分析)
-Provide technical analysis based on the chart data:
+请按照以下8个部分撰写报告（每个部分都需要：专业术语 + 通俗解释 + 具体建议）：
 
-1. **核心身份 Core Identity** - 80-100字专业概述：主星坐守、五行局、命盘格局
-2. **命盘结构 Chart Structure** - 十二宫位星曜分布、格局判定、四化分析
-3. **大限分析 Major Periods** - 当前大限宫位及星曜、大限四化、十年运势走向
-4. **事业宫分析 Career Palace** - 官禄宫主星及辅星、事业格局判定
-5. **财帛宫分析 Wealth Palace** - 财帛宫星曜组合、财运格局
-6. **夫妻宫分析 Marriage Palace** - 夫妻宫星曜、配偶特征、婚姻时机
+### 1. 核心身份 (150-200字)
+用专业术语描述命盘格局，然后用通俗语言解释这对命主意味着什么性格和命运走向。
 
-### Part 2: Annual Forecast (流年运势)
-Based on the current year's flow:
+### 2. 命盘全览 (200-300字)
+用表格展示12宫核心配置，标注出3个最重要的格局并解释其意义。
 
-7. **流年总览 Annual Overview** - 流年宫位、流年四化、整体运势评分(★)
-8. **流月分析 Monthly Breakdown** - 各月运势等级及关键事项
-9. **流年吉元素 Lucky Elements** - 流年幸运色、数字、方位
-10. **流年凶象 Caution Areas** - 煞曜影响、需注意的领域
-11. **刑冲克害 Adverse Aspects** - 命理上的刑冲克害及化解
-12. **趋吉避凶 Auspicious Guidance** - 专业趋避建议
+### 3. 当前大限 (200-250字)
+分析当前十年大运，指出这十年最该把握的机会和需要规避的风险，给出具体建议。
 
-### Professional Standards
-- Use proper Zi Wei Dou Shu terminology
-- Cite specific stars and their positions
-- Identify special patterns (格局) if present
-- Provide ratings where appropriate
-- Be authoritative and technical, not motivational
-- Bilingual format for global accessibility`;
+### 4. 事业前程 (250-300字)
+分析官禄宫，列出3-4个适合的具体行业，指出最佳创业或跳槽时机。
+
+### 5. 财富运势 (200-250字)
+分析财帛宫，说明正财偏财倾向，给出保守或进取的理财建议和具体投资方向。
+
+### 6. 情感姻缘 (200-250字)
+分析夫妻宫，用3点具体描述理想伴侣的特质，指出最佳婚运时期。
+
+### 7. 今年流年 (300-400字)
+解读流年四化，用表格展示12个月运势（标注吉凶等级），详细分析3个关键月份。
+
+### 8. 大师建议 (150-200字)
+给出3条最核心的人生建议，格式：
+1. [时机建议] - 何时做什么
+2. [行为建议] - 如何做
+3. [心态建议] - 保持什么心态
+
+## 写作要点
+- 每提到专业术语后，用"→"或"这意味着"来解释其含义
+- 避免空泛的"要注意健康"，要说"5月注意肠胃，避免生冷"
+- 避免说"事业有发展"，要说"2026年8月后有升职机会"
+- 用星级评分增加可读性
+- 总字数控制在3500-4500字`;
 }
 
 function getShichenName(hour: number): string {
