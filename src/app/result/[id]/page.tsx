@@ -27,6 +27,14 @@ export default async function ResultPage({ params }: PageProps) {
     notFound();
   }
 
+  // 解析原始命盘数据
+  let astrolabeData = null;
+  try {
+    astrolabeData = report.rawAstrolabe ? JSON.parse(report.rawAstrolabe) : null;
+  } catch (e) {
+    console.error('Failed to parse astrolabe data:', e);
+  }
+
   return (
     <ReportContent
       report={{
@@ -39,7 +47,7 @@ export default async function ResultPage({ params }: PageProps) {
         longitude: report.longitude,
         coreIdentity: report.coreIdentity || '',
         aiReport: report.aiReport || '',
-        rawAstrolabe: report.rawAstrolabe as Record<string, unknown> | null,
+        rawAstrolabe: astrolabeData,
         createdAt: report.createdAt.toISOString(),
       }}
     />

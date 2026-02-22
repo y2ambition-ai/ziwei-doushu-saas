@@ -396,13 +396,6 @@ export default function ReportContent({ report }: ReportContentProps) {
           {/* Actions - 打印时隐藏 */}
           <div className="mt-10 flex flex-col md:flex-row items-center justify-center gap-6 print:hidden">
             <Link
-              href={`/chart/${report.id}`}
-              className="text-xs tracking-widest px-6 py-3 border border-[#B8925A]/50 text-[#1A0F05]/60
-                         hover:border-[#B8925A] hover:text-[#B8925A] transition-all duration-300"
-            >
-              查看完整命盘
-            </Link>
-            <Link
               href="/"
               className="text-xs tracking-widest px-6 py-3 border border-[#B8925A] text-[#B8925A]
                          hover:bg-[#B8925A] hover:text-[#F7F3EC] transition-all duration-300"
