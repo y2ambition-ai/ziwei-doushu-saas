@@ -1,6 +1,7 @@
 /**
  * 报告结果页面
  * /result/[id]
+ * 同时显示命盘和AI解读报告，方便打印
  */
 
 import { notFound } from 'next/navigation';
@@ -35,8 +36,10 @@ export default async function ResultPage({ params }: PageProps) {
         birthDate: report.birthDate,
         birthTime: report.birthTime,
         birthCity: report.birthCity,
+        longitude: report.longitude,
         coreIdentity: report.coreIdentity || '',
         aiReport: report.aiReport || '',
+        rawAstrolabe: report.rawAstrolabe as Record<string, unknown> | null,
         createdAt: report.createdAt.toISOString(),
       }}
     />

@@ -3,8 +3,27 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import Link from 'next/link';
+import MiniChart from '@/components/MiniChart';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface RawAstrolabe {
+  palaces?: Array<{
+    name?: string;
+    heavenlyStem?: string;
+    earthlyBranch?: string;
+    majorStars?: { name: string; brightness?: string }[];
+    minorStars?: { name: string; brightness?: string }[];
+    adjectiveStars?: { name: string }[];
+    changsheng12?: string;
+    boshi12?: string;
+    decadal?: { range?: [number, number] };
+    ages?: number[];
+  }>;
+  chineseDate?: string;
+  fiveElementsClass?: string;
+  chineseZodiac?: string;
+}
 
 interface ReportData {
   id: string;
@@ -13,8 +32,10 @@ interface ReportData {
   birthDate: string;
   birthTime: number;
   birthCity: string;
+  longitude?: number;
   coreIdentity: string;
   aiReport: string;
+  rawAstrolabe: RawAstrolabe | null;
   createdAt: string;
 }
 
@@ -35,7 +56,6 @@ function Divider() {
 }
 
 function getShichenName(hour: number): string {
-  // hour 是 0-23，需要转换为 0-11 的时辰索引
   const shichenMap: Record<number, string> = {
     0: '子时 (23:00-01:00)',
     1: '丑时 (01:00-03:00)',
@@ -50,7 +70,6 @@ function getShichenName(hour: number): string {
     10: '戌时 (19:00-21:00)',
     11: '亥时 (21:00-23:00)',
   };
-  // 23点归为子时(0)，其他 hour/2 向下取整
   const shichenIndex = hour === 23 ? 0 : Math.floor((hour + 1) / 2);
   return shichenMap[shichenIndex] || '未知时辰';
 }
@@ -196,7 +215,7 @@ export default function ReportContent({ report }: ReportContentProps) {
   return (
     <div className="min-h-screen bg-[#F7F3EC]">
       {/* Header */}
-      <header className="border-b border-[#B8925A]/15 py-6 px-8">
+      <header className="border-b border-[#B8925A]/15 py-6 px-8 print:hidden">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 hover:opacity-70 transition-opacity">
             <span className="text-[#B8925A] text-lg">☯</span>
@@ -211,16 +230,16 @@ export default function ReportContent({ report }: ReportContentProps) {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto py-16 px-8">
+      <main className="max-w-5xl mx-auto py-8 px-4 md:py-16 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
           {/* Title */}
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <p className="text-[#B8925A] tracking-[0.3em] text-xs mb-4 uppercase">
-              您的命理报告
+              紫微斗数命理报告
             </p>
             <h1 className="text-[#1A0F05] text-2xl md:text-3xl font-light tracking-wide mb-3">
               {report.email}
@@ -231,10 +250,27 @@ export default function ReportContent({ report }: ReportContentProps) {
             <Divider />
           </div>
 
+          {/* 命盘显示 - 打印时也显示 */}
+          {report.rawAstrolabe && (
+            <motion.div
+              className="mb-8 print:break-before-page"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <MiniChart
+                palaces={report.rawAstrolabe.palaces}
+                chineseDate={report.rawAstrolabe.chineseDate}
+                fiveElementsClass={report.rawAstrolabe.fiveElementsClass}
+                chineseZodiac={report.rawAstrolabe.chineseZodiac}
+              />
+            </motion.div>
+          )}
+
           {/* Content Area */}
           {loading ? (
             <motion.div
-              className="border border-[#B8925A]/20 p-8 md:p-12"
+              className="border border-[#B8925A]/20 p-8 md:p-12 print:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
@@ -242,7 +278,7 @@ export default function ReportContent({ report }: ReportContentProps) {
             </motion.div>
           ) : error ? (
             <motion.div
-              className="border border-red-300 bg-red-50 p-8 text-center"
+              className="border border-red-300 bg-red-50 p-8 text-center print:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
@@ -259,18 +295,18 @@ export default function ReportContent({ report }: ReportContentProps) {
             <>
               {/* Core Identity Card */}
               <motion.div
-                className="mb-10 p-8 bg-[#1A0F05] text-[#F7F3EC] text-center"
+                className="mb-8 p-6 bg-[#1A0F05] text-[#F7F3EC] text-center print:break-inside-avoid"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
-                <p className="text-[#B8925A] text-xs tracking-widest mb-3">核心身份</p>
-                <p className="text-lg leading-relaxed">{coreIdentity}</p>
+                <p className="text-[#B8925A] text-xs tracking-widest mb-2">核心身份</p>
+                <p className="text-base leading-relaxed">{coreIdentity}</p>
               </motion.div>
 
               {/* Report Content */}
               <motion.div
-                className="border border-[#B8925A]/20 p-8 md:p-12"
+                className="border border-[#B8925A]/20 p-6 md:p-10 print:break-inside-avoid"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
@@ -282,14 +318,14 @@ export default function ReportContent({ report }: ReportContentProps) {
             </>
           )}
 
-          {/* Actions */}
-          <div className="mt-10 flex flex-col md:flex-row items-center justify-center gap-6">
+          {/* Actions - 打印时隐藏 */}
+          <div className="mt-10 flex flex-col md:flex-row items-center justify-center gap-6 print:hidden">
             <Link
               href={`/chart/${report.id}`}
               className="text-xs tracking-widest px-6 py-3 border border-[#B8925A]/50 text-[#1A0F05]/60
                          hover:border-[#B8925A] hover:text-[#B8925A] transition-all duration-300"
             >
-              查看命盘
+              查看完整命盘
             </Link>
             <Link
               href="/"
@@ -299,11 +335,9 @@ export default function ReportContent({ report }: ReportContentProps) {
               重新推算
             </Link>
             <button
-              onClick={() => {
-                window.print();
-              }}
-              className="text-xs tracking-widest px-6 py-3 border border-[#B8925A]/50 text-[#1A0F05]/60
-                         hover:border-[#B8925A] hover:text-[#B8925A] transition-all duration-300"
+              onClick={() => window.print()}
+              className="text-xs tracking-widest px-6 py-3 bg-[#8B4513] text-[#F7F3EC]
+                         hover:bg-[#A0522D] transition-all duration-300"
             >
               打印报告
             </button>
@@ -319,7 +353,7 @@ export default function ReportContent({ report }: ReportContentProps) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#B8925A]/15 py-8 px-8 bg-[#F0EBE1]">
+      <footer className="border-t border-[#B8925A]/15 py-8 px-8 bg-[#F0EBE1] print:hidden">
         <div className="max-w-5xl mx-auto text-center">
           <p className="text-[#1A0F05]/30 text-xs tracking-wider">
             © 2025 天命玄机 · Taoist Metaphysics
