@@ -47,6 +47,7 @@ export default async function ChartPage({ params }: PageProps) {
         birthCity: report.birthCity,
         rawAstrolabe: astrolabeData,
         createdAt: report.createdAt.toISOString(),
+        hasAIReport: !!(report.aiReport && report.aiReport.length > 100),
       }}
     />
   );

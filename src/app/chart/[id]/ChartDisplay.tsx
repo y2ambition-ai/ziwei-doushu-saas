@@ -46,6 +46,7 @@ interface ReportData {
   birthCity: string;
   rawAstrolabe: RawAstrolabe | null;
   createdAt: string;
+  hasAIReport?: boolean;
 }
 
 interface ChartDisplayProps {
@@ -651,7 +652,7 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
                   </p>
                 )}
                 <button
-                  onClick={handleGetReading}
+                  onClick={report.hasAIReport ? () => router.push(`/result/${report.id}`) : handleGetReading}
                   disabled={loading}
                   className="inline-flex items-center gap-2 text-xs tracking-[0.15em] px-8 py-3
                             bg-[#8B4513] text-[#F7F3EC] font-medium
@@ -668,6 +669,13 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
                         ☯
                       </motion.span>
                       <span>正在处理...</span>
+                    </>
+                  ) : report.hasAIReport ? (
+                    <>
+                      <span>查看完整命盘</span>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
                     </>
                   ) : (
                     <>

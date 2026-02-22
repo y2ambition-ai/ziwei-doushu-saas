@@ -140,7 +140,7 @@ function renderMarkdown(text: string) {
 
 // ─── Loading Animation ─────────────────────────────────────────────────────────
 
-function LoadingAnimation({ reportId }: { reportId: string }) {
+function LoadingAnimation() {
   const [countdown, setCountdown] = useState(120);  // 2分钟倒计时
 
   useEffect(() => {
@@ -168,15 +168,6 @@ function LoadingAnimation({ reportId }: { reportId: string }) {
         预计剩余时间：{minutes}:{seconds.toString().padStart(2, '0')}
       </p>
 
-      {/* 查看命盘按钮 */}
-      <Link
-        href={`/chart/${reportId}`}
-        className="inline-block text-xs tracking-widest px-6 py-3 border border-[#B8925A]/50 text-[#1A0F05]/60
-                   hover:border-[#B8925A] hover:text-[#B8925A] transition-all duration-300 mb-6"
-      >
-        查看命盘
-      </Link>
-
       {/* 免费复用提示 */}
       <div className="mt-6 p-4 bg-[#B8925A]/5 border border-[#B8925A]/20 max-w-md mx-auto">
         <p className="text-[#1A0F05]/60 text-xs leading-relaxed">
@@ -189,7 +180,7 @@ function LoadingAnimation({ reportId }: { reportId: string }) {
 
 // ─── Waiting Animation (for retry cooldown) ─────────────────────────────────────
 
-function WaitingAnimation({ retryAfter, reportId }: { retryAfter: number; reportId: string }) {
+function WaitingAnimation({ retryAfter }: { retryAfter: number }) {
   const minutes = Math.floor(retryAfter / 60);
   const seconds = retryAfter % 60;
 
@@ -207,15 +198,6 @@ function WaitingAnimation({ retryAfter, reportId }: { retryAfter: number; report
       <p className="text-[#8B4513] text-sm font-medium mb-6">
         自动刷新倒计时：{minutes}:{seconds.toString().padStart(2, '0')}
       </p>
-
-      {/* 查看命盘按钮 */}
-      <Link
-        href={`/chart/${reportId}`}
-        className="inline-block text-xs tracking-widest px-6 py-3 border border-[#B8925A]/50 text-[#1A0F05]/60
-                   hover:border-[#B8925A] hover:text-[#B8925A] transition-all duration-300 mb-6"
-      >
-        查看命盘
-      </Link>
 
       {/* 免费复用提示 */}
       <div className="mt-6 p-4 bg-[#B8925A]/5 border border-[#B8925A]/20 max-w-md mx-auto">
@@ -364,9 +346,9 @@ export default function ReportContent({ report }: ReportContentProps) {
               animate={{ opacity: 1 }}
             >
               {generating ? (
-                <WaitingAnimation retryAfter={retryAfter} reportId={report.id} />
+                <WaitingAnimation retryAfter={retryAfter} />
               ) : (
-                <LoadingAnimation reportId={report.id} />
+                <LoadingAnimation />
               )}
             </motion.div>
           ) : error ? (
