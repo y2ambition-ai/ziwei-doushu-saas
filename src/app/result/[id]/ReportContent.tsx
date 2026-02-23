@@ -198,6 +198,7 @@ function LuckyElementsCard({ report }: { report: string }) {
   };
 
   const colorMap: Record<string, { hex: string; gradient: string; shadow: string }> = {
+    // 基础颜色
     '紫色': { hex: '#8B5CF6', gradient: 'from-violet-400 via-purple-500 to-violet-600', shadow: 'shadow-violet-300/50' },
     '金色': { hex: '#F59E0B', gradient: 'from-amber-300 via-yellow-400 to-amber-500', shadow: 'shadow-amber-300/50' },
     '绿色': { hex: '#10B981', gradient: 'from-emerald-400 via-green-500 to-teal-500', shadow: 'shadow-emerald-300/50' },
@@ -210,11 +211,32 @@ function LuckyElementsCard({ report }: { report: string }) {
     '橙色': { hex: '#F97316', gradient: 'from-orange-300 via-amber-400 to-orange-500', shadow: 'shadow-orange-300/50' },
     '青色': { hex: '#06B6D4', gradient: 'from-cyan-400 via-teal-500 to-cyan-600', shadow: 'shadow-cyan-300/50' },
     '棕色': { hex: '#92400E', gradient: 'from-amber-600 via-yellow-700 to-amber-800', shadow: 'shadow-amber-400/40' },
+    // 变体颜色
+    '浅蓝': { hex: '#7DD3FC', gradient: 'from-sky-300 via-cyan-400 to-sky-500', shadow: 'shadow-sky-300/50' },
+    '深蓝': { hex: '#1D4ED8', gradient: 'from-blue-500 via-indigo-600 to-blue-700', shadow: 'shadow-blue-400/50' },
+    '墨绿': { hex: '#166534', gradient: 'from-green-600 via-emerald-700 to-green-800', shadow: 'shadow-green-400/40' },
+    '深绿': { hex: '#15803D', gradient: 'from-green-500 via-emerald-600 to-green-700', shadow: 'shadow-green-300/40' },
+    '浅绿': { hex: '#86EFAC', gradient: 'from-green-300 via-emerald-400 to-green-500', shadow: 'shadow-green-300/50' },
+    '米白': { hex: '#FEF9E7', gradient: 'from-amber-50 via-yellow-50 to-orange-50', shadow: 'shadow-amber-100/30' },
+    '米色': { hex: '#F5E6D3', gradient: 'from-amber-100 via-orange-100 to-yellow-100', shadow: 'shadow-amber-100/40' },
+    '驼色': { hex: '#A18650', gradient: 'from-amber-500 via-yellow-600 to-amber-700', shadow: 'shadow-amber-400/40' },
+    '卡其': { hex: '#C2A76C', gradient: 'from-yellow-500 via-amber-500 to-yellow-600', shadow: 'shadow-yellow-300/40' },
+    '藏青': { hex: '#1E3A5F', gradient: 'from-slate-700 via-blue-800 to-slate-900', shadow: 'shadow-slate-400/30' },
+    '酒红': { hex: '#9B2C2C', gradient: 'from-red-700 via-rose-800 to-red-900', shadow: 'shadow-red-400/40' },
+    '藏蓝': { hex: '#1E3A8A', gradient: 'from-blue-700 via-indigo-800 to-blue-900', shadow: 'shadow-blue-400/40' },
+    '灰蓝': { hex: '#64748B', gradient: 'from-slate-400 via-slate-500 to-slate-600', shadow: 'shadow-slate-300/40' },
+    '银色': { hex: '#CBD5E1', gradient: 'from-slate-200 via-gray-300 to-slate-400', shadow: 'shadow-slate-200/40' },
+    '香槟': { hex: '#F7E7CE', gradient: 'from-amber-100 via-orange-100 to-yellow-100', shadow: 'shadow-amber-100/40' },
+    // 英文颜色
     'Purple': { hex: '#8B5CF6', gradient: 'from-violet-400 via-purple-500 to-violet-600', shadow: 'shadow-violet-300/50' },
     'Gold': { hex: '#F59E0B', gradient: 'from-amber-300 via-yellow-400 to-amber-500', shadow: 'shadow-amber-300/50' },
     'Green': { hex: '#10B981', gradient: 'from-emerald-400 via-green-500 to-teal-500', shadow: 'shadow-emerald-300/50' },
     'Red': { hex: '#EF4444', gradient: 'from-rose-400 via-red-500 to-rose-600', shadow: 'shadow-rose-300/50' },
     'Blue': { hex: '#3B82F6', gradient: 'from-blue-400 via-indigo-500 to-blue-600', shadow: 'shadow-blue-300/50' },
+    'Light Blue': { hex: '#7DD3FC', gradient: 'from-sky-300 via-cyan-400 to-sky-500', shadow: 'shadow-sky-300/50' },
+    'Dark Green': { hex: '#166534', gradient: 'from-green-600 via-emerald-700 to-green-800', shadow: 'shadow-green-400/40' },
+    'Beige': { hex: '#F5E6D3', gradient: 'from-amber-100 via-orange-100 to-yellow-100', shadow: 'shadow-amber-100/40' },
+    'Cream': { hex: '#FEF9E7', gradient: 'from-amber-50 via-yellow-50 to-orange-50', shadow: 'shadow-amber-100/30' },
   };
 
   const colors = parseLuckyColors();
