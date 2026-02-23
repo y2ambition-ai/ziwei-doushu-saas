@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import Link from 'next/link';
 import MiniChart from '@/components/MiniChart';
 
@@ -43,33 +43,120 @@ interface ReportContentProps {
   report: ReportData;
 }
 
-// ─── Helper Components ─────────────────────────────────────────────────────────
+// ─── Spring Animation Config ───────────────────────────────────────────────────
 
-function SectionDivider({ symbol = '☯' }: { symbol?: string }) {
+const springConfig = { type: 'spring' as const, stiffness: 280, damping: 25 };
+const gentleSpring = { type: 'spring' as const, stiffness: 180, damping: 30 };
+
+// ─── Decorative Components ─────────────────────────────────────────────────────
+
+function CloudPattern({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 100 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M10 20c0-5.5 4.5-10 10-10 1.5 0 3 .3 4.3.9C26.5 6.5 31.5 4 37 4c8.3 0 15 6.7 15 15 0 .7-.1 1.4-.2 2h3.2c-.1-.7-.2-1.3-.2-2 0-5.5 4.5-10 10-10 2 0 3.9.6 5.5 1.6C72.5 6.8 77 4 82 4c7.2 0 13 5.8 13 13 0 1-.1 2-.3 3H10z"
+        fill="currentColor"
+        opacity="0.15"
+      />
+    </svg>
+  );
+}
+
+function ElegantDivider({ variant = 'default' }: { variant?: 'default' | 'ornate' | 'minimal' }) {
+  if (variant === 'minimal') {
+    return (
+      <div className="flex items-center justify-center w-full my-6">
+        <div className="w-16 h-px bg-gradient-to-r from-transparent via-[#B8925A]/40 to-transparent" />
+      </div>
+    );
+  }
+
+  if (variant === 'ornate') {
+    return (
+      <div className="flex items-center justify-center gap-3 w-full my-10">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#B8925A]/30 to-[#B8925A]/50" />
+        <div className="flex items-center gap-2">
+          <span className="text-[#B8925A]/30 text-xs">❋</span>
+          <motion.span
+            className="text-[#B8925A] text-xl"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+          >
+            ☯
+          </motion.span>
+          <span className="text-[#B8925A]/30 text-xs">❋</span>
+        </div>
+        <div className="flex-1 h-px bg-gradient-to-l from-transparent via-[#B8925A]/30 to-[#B8925A]/50" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-4 w-full max-w-xs mx-auto my-8">
-      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#B8925A]/30 to-[#B8925A]/50" />
-      <span className="text-[#B8925A] text-lg opacity-60">{symbol}</span>
-      <div className="flex-1 h-px bg-gradient-to-l from-transparent via-[#B8925A]/30 to-[#B8925A]/50" />
+      <motion.div
+        className="flex-1 h-px bg-gradient-to-r from-transparent via-[#B8925A]/40 to-[#B8925A]/60"
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+      />
+      <motion.span
+        className="text-[#B8925A] text-lg opacity-70"
+        initial={{ scale: 0, rotate: -180 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ ...springConfig, delay: 0.3 }}
+      >
+        ☯
+      </motion.span>
+      <motion.div
+        className="flex-1 h-px bg-gradient-to-l from-transparent via-[#B8925A]/40 to-[#B8925A]/60"
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+      />
     </div>
   );
 }
 
-function OrnamentalBorder({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function CornerDecoration({ position }: { position: 'tl' | 'tr' | 'bl' | 'br' }) {
+  const positionClasses = {
+    tl: 'top-0 left-0 border-t-2 border-l-2',
+    tr: 'top-0 right-0 border-t-2 border-r-2',
+    bl: 'bottom-0 left-0 border-b-2 border-l-2',
+    br: 'bottom-0 right-0 border-b-2 border-r-2',
+  };
+
   return (
-    <div className={`relative ${className}`}>
-      {/* Corner decorations */}
-      <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#B8925A]/30" />
-      <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#B8925A]/30" />
-      <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#B8925A]/30" />
-      <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#B8925A]/30" />
-      {children}
-    </div>
+    <motion.div
+      className={`absolute w-6 h-6 ${positionClasses[position]} border-[#B8925A]/25`}
+      initial={{ opacity: 0, scale: 0.5 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ ...springConfig, delay: 0.2 }}
+    />
   );
 }
+
+function OrnamentalFrame({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <motion.div
+      className={`relative p-8 ${className}`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6 }}
+    >
+      <CornerDecoration position="tl" />
+      <CornerDecoration position="tr" />
+      <CornerDecoration position="bl" />
+      <CornerDecoration position="br" />
+      <div className="relative z-10">
+        {children}
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Lucky Elements Card (Enhanced) ────────────────────────────────────────────
 
 function LuckyElementsCard({ report }: { report: string }) {
-  // 解析幸运元素
   const parseLuckyColors = () => {
     const colorMatch = report.match(/幸运色[^|]*\|([^|]+)\|/);
     if (colorMatch) {
@@ -110,24 +197,24 @@ function LuckyElementsCard({ report }: { report: string }) {
     return '正南、东南';
   };
 
-  const colorMap: Record<string, { hex: string; gradient: string }> = {
-    '紫色': { hex: '#8B5CF6', gradient: 'from-violet-500 to-purple-600' },
-    '金色': { hex: '#F59E0B', gradient: 'from-amber-400 to-yellow-500' },
-    '绿色': { hex: '#10B981', gradient: 'from-emerald-400 to-green-500' },
-    '红色': { hex: '#EF4444', gradient: 'from-red-400 to-rose-500' },
-    '蓝色': { hex: '#3B82F6', gradient: 'from-blue-400 to-indigo-500' },
-    '白色': { hex: '#F3F4F6', gradient: 'from-gray-100 to-slate-200' },
-    '黑色': { hex: '#1F2937', gradient: 'from-gray-700 to-slate-800' },
-    '黄色': { hex: '#FBBF24', gradient: 'from-yellow-400 to-amber-500' },
-    '粉色': { hex: '#EC4899', gradient: 'from-pink-400 to-rose-500' },
-    '橙色': { hex: '#F97316', gradient: 'from-orange-400 to-amber-500' },
-    '青色': { hex: '#06B6D4', gradient: 'from-cyan-400 to-teal-500' },
-    '棕色': { hex: '#92400E', gradient: 'from-amber-600 to-yellow-700' },
-    'Purple': { hex: '#8B5CF6', gradient: 'from-violet-500 to-purple-600' },
-    'Gold': { hex: '#F59E0B', gradient: 'from-amber-400 to-yellow-500' },
-    'Green': { hex: '#10B981', gradient: 'from-emerald-400 to-green-500' },
-    'Red': { hex: '#EF4444', gradient: 'from-red-400 to-rose-500' },
-    'Blue': { hex: '#3B82F6', gradient: 'from-blue-400 to-indigo-500' },
+  const colorMap: Record<string, { hex: string; gradient: string; shadow: string }> = {
+    '紫色': { hex: '#8B5CF6', gradient: 'from-violet-400 via-purple-500 to-violet-600', shadow: 'shadow-violet-300/50' },
+    '金色': { hex: '#F59E0B', gradient: 'from-amber-300 via-yellow-400 to-amber-500', shadow: 'shadow-amber-300/50' },
+    '绿色': { hex: '#10B981', gradient: 'from-emerald-400 via-green-500 to-teal-500', shadow: 'shadow-emerald-300/50' },
+    '红色': { hex: '#EF4444', gradient: 'from-rose-400 via-red-500 to-rose-600', shadow: 'shadow-rose-300/50' },
+    '蓝色': { hex: '#3B82F6', gradient: 'from-blue-400 via-indigo-500 to-blue-600', shadow: 'shadow-blue-300/50' },
+    '白色': { hex: '#F8FAFC', gradient: 'from-slate-100 via-white to-slate-200', shadow: 'shadow-slate-200/50' },
+    '黑色': { hex: '#1F2937', gradient: 'from-gray-700 via-slate-800 to-gray-900', shadow: 'shadow-gray-400/30' },
+    '黄色': { hex: '#FBBF24', gradient: 'from-yellow-300 via-amber-400 to-orange-400', shadow: 'shadow-yellow-300/50' },
+    '粉色': { hex: '#EC4899', gradient: 'from-pink-300 via-rose-400 to-pink-500', shadow: 'shadow-pink-300/50' },
+    '橙色': { hex: '#F97316', gradient: 'from-orange-300 via-amber-400 to-orange-500', shadow: 'shadow-orange-300/50' },
+    '青色': { hex: '#06B6D4', gradient: 'from-cyan-400 via-teal-500 to-cyan-600', shadow: 'shadow-cyan-300/50' },
+    '棕色': { hex: '#92400E', gradient: 'from-amber-600 via-yellow-700 to-amber-800', shadow: 'shadow-amber-400/40' },
+    'Purple': { hex: '#8B5CF6', gradient: 'from-violet-400 via-purple-500 to-violet-600', shadow: 'shadow-violet-300/50' },
+    'Gold': { hex: '#F59E0B', gradient: 'from-amber-300 via-yellow-400 to-amber-500', shadow: 'shadow-amber-300/50' },
+    'Green': { hex: '#10B981', gradient: 'from-emerald-400 via-green-500 to-teal-500', shadow: 'shadow-emerald-300/50' },
+    'Red': { hex: '#EF4444', gradient: 'from-rose-400 via-red-500 to-rose-600', shadow: 'shadow-rose-300/50' },
+    'Blue': { hex: '#3B82F6', gradient: 'from-blue-400 via-indigo-500 to-blue-600', shadow: 'shadow-blue-300/50' },
   };
 
   const colors = parseLuckyColors();
@@ -136,98 +223,119 @@ function LuckyElementsCard({ report }: { report: string }) {
 
   return (
     <motion.div
-      className="mb-8 print:mb-4"
-      initial={{ opacity: 0, y: 20 }}
+      className="mb-10 print:mb-4"
+      initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.3 }}
+      transition={{ ...gentleSpring, delay: 0.3 }}
     >
       {/* 标题 */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#B8925A]/10 rounded-full">
-          <span className="text-[#B8925A]">✦</span>
-          <span className="text-[#8B4513] text-xs tracking-[0.2em] font-medium">Lucky Elements · 专属幸运元素</span>
-          <span className="text-[#B8925A]">✦</span>
+      <motion.div
+        className="text-center mb-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+      >
+        <div className="inline-flex items-center gap-3 px-6 py-2 bg-gradient-to-r from-[#B8925A]/5 via-[#B8925A]/10 to-[#B8925A]/5 rounded-full border border-[#B8925A]/20">
+          <span className="text-[#B8925A]/60">✧</span>
+          <span className="text-[#8B4513] text-xs tracking-[0.25em] font-medium">LUCKY ELEMENTS</span>
+          <span className="text-[#B8925A]/60">✧</span>
         </div>
-      </div>
+        <p className="text-[#1A0F05]/50 text-xs mt-2 tracking-wider">专属幸运元素</p>
+      </motion.div>
 
       {/* 三栏卡片 */}
       <div className="grid grid-cols-3 gap-4 md:gap-6">
         {/* 幸运色 */}
         <motion.div
-          className="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-[#B8925A]/10 text-center"
-          initial={{ opacity: 0, y: 10 }}
+          className="group relative bg-gradient-to-br from-white via-[#FFFEF8] to-white rounded-2xl p-5 md:p-6 shadow-lg shadow-[#B8925A]/5 border border-[#B8925A]/10 text-center overflow-hidden"
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ ...springConfig, delay: 0.5 }}
+          whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(184, 146, 90, 0.15)' }}
         >
-          <p className="text-[#8B4513]/70 text-[10px] md:text-xs tracking-wider mb-3">幸运色</p>
-          <div className="flex justify-center gap-2 md:gap-3 mb-3">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#B8925A]/30 to-transparent" />
+          <p className="text-[#8B4513]/60 text-[10px] md:text-xs tracking-[0.2em] mb-4 font-medium">幸运色</p>
+          <div className="flex justify-center gap-3 mb-4">
             {colors.map((color, i) => {
               const colorInfo = colorMap[color] || colorMap['紫色'];
               return (
                 <motion.div
                   key={i}
-                  className={`w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br ${colorInfo.gradient} shadow-md`}
-                  initial={{ scale: 0, rotate: -20 }}
+                  className={`relative w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br ${colorInfo.gradient} ${colorInfo.shadow} shadow-lg`}
+                  initial={{ scale: 0, rotate: -30 }}
                   animate={{ scale: 1, rotate: 0 }}
-                  transition={{ delay: 0.5 + i * 0.1, type: 'spring', stiffness: 200 }}
+                  transition={{ ...springConfig, delay: 0.6 + i * 0.12 }}
+                  whileHover={{ scale: 1.15, rotate: 10 }}
                   title={color}
-                />
+                >
+                  <div className="absolute inset-1 rounded-full bg-gradient-to-br from-white/40 to-transparent" />
+                </motion.div>
               );
             })}
           </div>
-          <p className="text-[#1A0F05]/80 text-[10px] md:text-xs font-medium">{colors.join(' · ')}</p>
+          <p className="text-[#1A0F05]/70 text-[10px] md:text-xs font-medium tracking-wide">{colors.join(' · ')}</p>
         </motion.div>
 
         {/* 幸运数字 */}
         <motion.div
-          className="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-[#B8925A]/10 text-center"
-          initial={{ opacity: 0, y: 10 }}
+          className="group relative bg-gradient-to-br from-white via-[#FFFEF8] to-white rounded-2xl p-5 md:p-6 shadow-lg shadow-[#B8925A]/5 border border-[#B8925A]/10 text-center overflow-hidden"
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ ...springConfig, delay: 0.6 }}
+          whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(184, 146, 90, 0.15)' }}
         >
-          <p className="text-[#8B4513]/70 text-[10px] md:text-xs tracking-wider mb-3">幸运数字</p>
-          <div className="flex justify-center gap-2 md:gap-3 mb-3">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#B8925A]/30 to-transparent" />
+          <p className="text-[#8B4513]/60 text-[10px] md:text-xs tracking-[0.2em] mb-4 font-medium">幸运数字</p>
+          <div className="flex justify-center gap-3 mb-4">
             {numbers.map((num, i) => (
               <motion.div
                 key={i}
-                className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-[#B8925A] to-[#8B4513] flex items-center justify-center shadow-md"
-                initial={{ scale: 0, rotate: 10 }}
+                className="relative w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-[#B8925A] via-[#A67B3C] to-[#8B4513] flex items-center justify-center shadow-lg shadow-[#B8925A]/30"
+                initial={{ scale: 0, rotate: 15 }}
                 animate={{ scale: 1, rotate: 0 }}
-                transition={{ delay: 0.6 + i * 0.1, type: 'spring', stiffness: 200 }}
+                transition={{ ...springConfig, delay: 0.7 + i * 0.12 }}
+                whileHover={{ scale: 1.1, rotate: -5 }}
               >
-                <span className="text-white text-sm md:text-lg font-bold">{num}</span>
+                <div className="absolute inset-0.5 rounded-[7px] bg-gradient-to-br from-white/20 to-transparent" />
+                <span className="relative text-white text-sm md:text-lg font-bold tracking-tight">{num}</span>
               </motion.div>
             ))}
           </div>
-          <p className="text-[#1A0F05]/80 text-[10px] md:text-xs font-medium">{numbers.join(' · ')}</p>
+          <p className="text-[#1A0F05]/70 text-[10px] md:text-xs font-medium tracking-wide">{numbers.join(' · ')}</p>
         </motion.div>
 
         {/* 幸运方位 */}
         <motion.div
-          className="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-[#B8925A]/10 text-center"
-          initial={{ opacity: 0, y: 10 }}
+          className="group relative bg-gradient-to-br from-white via-[#FFFEF8] to-white rounded-2xl p-5 md:p-6 shadow-lg shadow-[#B8925A]/5 border border-[#B8925A]/10 text-center overflow-hidden"
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
+          transition={{ ...springConfig, delay: 0.7 }}
+          whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(184, 146, 90, 0.15)' }}
         >
-          <p className="text-[#8B4513]/70 text-[10px] md:text-xs tracking-wider mb-3">幸运方位</p>
-          <div className="flex justify-center mb-3">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#B8925A]/30 to-transparent" />
+          <p className="text-[#8B4513]/60 text-[10px] md:text-xs tracking-[0.2em] mb-4 font-medium">幸运方位</p>
+          <div className="flex justify-center mb-4">
             <motion.div
-              className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-[#B8925A]/20 to-[#8B4513]/20 flex items-center justify-center border-2 border-[#B8925A]/30"
-              initial={{ rotate: -180, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.7 }}
+              className="relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-[#B8925A]/15 via-[#8B4513]/10 to-[#B8925A]/15 flex items-center justify-center border-2 border-[#B8925A]/25 shadow-inner"
+              initial={{ rotate: -180, opacity: 0, scale: 0.5 }}
+              animate={{ rotate: 0, opacity: 1, scale: 1 }}
+              transition={{ ...gentleSpring, delay: 0.8 }}
+              whileHover={{ rotate: 15 }}
             >
-              <svg className="w-5 h-5 md:w-6 md:h-6 text-[#8B4513]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/50 to-transparent" />
+              <svg className="relative w-6 h-6 md:w-7 md:h-7 text-[#8B4513]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
               </svg>
             </motion.div>
           </div>
-          <p className="text-[#1A0F05]/80 text-[10px] md:text-xs font-medium">{directions}</p>
+          <p className="text-[#1A0F05]/70 text-[10px] md:text-xs font-medium tracking-wide">{directions}</p>
         </motion.div>
       </div>
     </motion.div>
   );
 }
+
+// ─── Helper Functions ─────────────────────────────────────────────────────────
 
 function getShichenName(hour: number): string {
   const shichenMap: Record<number, string> = {
@@ -268,45 +376,75 @@ function renderMarkdown(text: string) {
 
     if (line.startsWith('# ')) {
       return (
-        <h1 key={i} className="text-xl font-medium text-[#1A0F05] mt-10 mb-5 pb-2 border-b border-[#B8925A]/20 print:mt-6 print:text-base print-section flex items-center gap-3">
-          <span className="text-[#B8925A]/40">◆</span>
-          {line.slice(2)}
-        </h1>
+        <motion.h1
+          key={i}
+          className="text-xl font-medium text-[#1A0F05] mt-12 mb-6 pb-3 border-b border-[#B8925A]/15 print:mt-6 print:text-base print-section flex items-center gap-3"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: i * 0.01 }}
+        >
+          <span className="text-[#B8925A]/50 text-sm">◆</span>
+          <span>{line.slice(2)}</span>
+        </motion.h1>
       );
     }
     if (line.startsWith('## ')) {
       return (
-        <h2 key={i} className="text-lg font-medium text-[#1A0F05] mt-8 mb-4 print:mt-4 print:text-sm print-section flex items-center gap-2">
-          <span className="text-[#B8925A] text-sm">✦</span>
-          {line.slice(3)}
-        </h2>
+        <motion.h2
+          key={i}
+          className="text-lg font-medium text-[#1A0F05] mt-10 mb-5 print:mt-4 print:text-sm print-section flex items-center gap-3"
+          initial={{ opacity: 0, x: -5 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: i * 0.01 }}
+        >
+          <span className="flex items-center justify-center w-6 h-6 rounded bg-[#B8925A]/10 text-[#B8925A] text-xs">✦</span>
+          <span>{line.slice(3)}</span>
+        </motion.h2>
       );
     }
     if (line.startsWith('### ')) {
       return (
-        <h3 key={i} className="text-base font-medium text-[#1A0F05] mt-6 mb-3 print:mt-3 print:text-xs flex items-center gap-2">
-          <span className="text-[#B8925A]/60">·</span>
-          {line.slice(4)}
-        </h3>
+        <motion.h3
+          key={i}
+          className="text-base font-medium text-[#1A0F05] mt-8 mb-4 print:mt-3 print:text-xs flex items-center gap-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: i * 0.01 }}
+        >
+          <span className="text-[#B8925A]/60">—</span>
+          <span>{line.slice(4)}</span>
+        </motion.h3>
       );
     }
     if (line.startsWith('- **') && line.includes('**:')) {
       const match = line.match(/- \*\*(.+?)\*\*:\s*(.+)/);
       if (match) {
         return (
-          <li key={i} className="ml-4 text-sm leading-relaxed mb-2 print:text-xs flex items-start gap-2">
-            <span className="text-[#B8925A] mt-1">•</span>
-            <span><strong className="text-[#8B4513]">{match[1]}</strong>: {match[2]}</span>
-          </li>
+          <motion.li
+            key={i}
+            className="ml-2 text-sm leading-[1.9] mb-2.5 print:text-xs flex items-start gap-3"
+            initial={{ opacity: 0, x: -5 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.01 }}
+          >
+            <span className="text-[#B8925A] mt-2 text-xs">●</span>
+            <span><strong className="text-[#8B4513] font-medium">{match[1]}</strong><span className="text-[#1A0F05]/50">:</span> <span className="text-[#1A0F05]/75">{match[2]}</span></span>
+          </motion.li>
         );
       }
     }
     if (line.startsWith('- ')) {
       return (
-        <li key={i} className="ml-4 text-sm leading-relaxed print:text-xs flex items-start gap-2">
-          <span className="text-[#B8925A]/60 mt-1">◦</span>
-          <span>{line.slice(2)}</span>
-        </li>
+        <motion.li
+          key={i}
+          className="ml-2 text-sm leading-[1.9] print:text-xs flex items-start gap-3"
+          initial={{ opacity: 0, x: -5 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: i * 0.01 }}
+        >
+          <span className="text-[#B8925A]/50 mt-2 text-xs">○</span>
+          <span className="text-[#1A0F05]/75">{line.slice(2)}</span>
+        </motion.li>
       );
     }
     if (line.startsWith('|') && !line.includes('---')) {
@@ -315,42 +453,50 @@ function renderMarkdown(text: string) {
       const isHeader = i > 0 && !text.split('\n')[i-1]?.includes('---');
       const gridCols = colCount <= 2 ? 'grid-cols-2' : colCount <= 4 ? 'grid-cols-4' : 'grid-cols-6';
       return (
-        <div key={i} className={`${gridCols} gap-2 py-2 px-2 text-sm ${isHeader ? 'bg-[#B8925A]/5 font-medium' : 'border-b border-[#B8925A]/10'} print:text-xs print-section`}>
+        <div key={i} className={`${gridCols} gap-3 py-2.5 px-3 text-sm ${isHeader ? 'bg-[#B8925A]/8 font-medium text-[#8B4513]' : 'border-b border-[#B8925A]/8 text-[#1A0F05]/75'} print:text-xs print-section`}>
           {cells.map((cell, j) => (
-            <span key={j} className="text-center text-[#1A0F05]/80">{cell.trim()}</span>
+            <span key={j} className="text-center">{cell.trim()}</span>
           ))}
         </div>
       );
     }
     if (line.includes('---') && !line.startsWith('|')) {
-      return <SectionDivider key={i} />;
+      return <ElegantDivider key={i} variant="minimal" />;
     }
     if (line.startsWith('**') && line.endsWith('**')) {
       return (
-        <p key={i} className="text-sm font-medium text-[#8B4513] my-3 print:text-xs">
+        <p key={i} className="text-sm font-medium text-[#8B4513] my-4 print:text-xs tracking-wide">
           {line.slice(2, -2)}
         </p>
       );
     }
     if (line.trim()) {
       return (
-        <p key={i} className="text-sm leading-relaxed mb-3 text-[#1A0F05]/80 print:text-xs print:mb-2">
+        <motion.p
+          key={i}
+          className="text-sm leading-[1.9] mb-4 text-[#1A0F05]/75 print:text-xs print:mb-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: i * 0.005 }}
+        >
           {line}
-        </p>
+        </motion.p>
       );
     }
     return null;
   }).filter(Boolean);
 }
 
-// ─── Loading Animation ─────────────────────────────────────────────────────────
+// ─── Loading Animation (Enhanced) ─────────────────────────────────────────────
 
 function LoadingAnimation() {
-  const [countdown, setCountdown] = useState(300);  // 5分钟倒计时
+  const [countdown, setCountdown] = useState(300);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown((prev) => Math.max(0, prev - 1));
+      setProgress((prev) => Math.min(100, prev + 0.33));
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -359,62 +505,88 @@ function LoadingAnimation() {
   const seconds = countdown % 60;
 
   return (
-    <div className="text-center py-16">
+    <div className="text-center py-20">
       <motion.div
+        className="relative inline-flex items-center justify-center mb-8"
         animate={{ rotate: 360 }}
-        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-        className="inline-block text-4xl text-[#B8925A] mb-6"
+        transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
       >
-        ☯
+        <div className="absolute w-24 h-24 rounded-full border border-[#B8925A]/20" />
+        <div className="absolute w-20 h-20 rounded-full border border-[#B8925A]/30" />
+        <div className="absolute w-16 h-16 rounded-full border border-[#B8925A]/40" />
+        <span className="relative text-4xl text-[#B8925A]">☯</span>
       </motion.div>
-      <p className="text-[#B8925A] tracking-widest text-sm mb-2">AI 命理师正在解读</p>
-      <p className="text-[#1A0F05]/40 text-xs mb-4">正在结合您的命盘数据生成专属解读报告...</p>
-      <p className="text-[#8B4513] text-sm font-medium mb-6">
+
+      <motion.p
+        className="text-[#B8925A] tracking-[0.3em] text-sm mb-3"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+      >
+        AI 命理师正在解读
+      </motion.p>
+
+      <p className="text-[#1A0F05]/40 text-xs mb-6 max-w-xs mx-auto leading-relaxed">
+        正在结合您的命盘数据与千年道家智慧，生成专属解读报告...
+      </p>
+
+      {/* Progress bar */}
+      <div className="w-48 h-1 bg-[#B8925A]/10 rounded-full mx-auto mb-4 overflow-hidden">
+        <motion.div
+          className="h-full bg-gradient-to-r from-[#B8925A] to-[#8B4513] rounded-full"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      <p className="text-[#8B4513] text-sm font-medium mb-8">
         预计剩余时间：{minutes}:{seconds.toString().padStart(2, '0')}
       </p>
 
-      {/* 免费复用提示 */}
-      <div className="mt-6 p-4 bg-[#B8925A]/5 border border-[#B8925A]/20 max-w-md mx-auto">
+      <div className="max-w-sm mx-auto p-5 bg-gradient-to-br from-[#B8925A]/5 to-transparent border border-[#B8925A]/15 rounded-xl">
         <p className="text-[#1A0F05]/60 text-xs leading-relaxed">
-          💡 <strong>温馨提示：</strong>使用相同邮箱和出生信息再次进入，<span className="text-[#B8925A]">7天内免费查看</span>，不会重复调用AI生成报告。
+          <span className="text-[#B8925A] mr-1">💡</span>
+          <strong className="text-[#8B4513]">温馨提示：</strong>
+          使用相同邮箱和出生信息再次进入，<span className="text-[#B8925A] font-medium">7天内免费查看</span>，不会重复生成报告。
         </p>
       </div>
     </div>
   );
 }
-
-// ─── Waiting Animation (for retry cooldown) ─────────────────────────────────────
 
 function WaitingAnimation({ retryAfter }: { retryAfter: number }) {
   const minutes = Math.floor(retryAfter / 60);
   const seconds = retryAfter % 60;
 
   return (
-    <div className="text-center py-16">
+    <div className="text-center py-20">
       <motion.div
+        className="relative inline-flex items-center justify-center mb-8"
         animate={{ rotate: 360 }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-        className="inline-block text-4xl text-[#B8925A] mb-6"
+        transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
       >
-        ☯
+        <div className="absolute w-20 h-20 rounded-full border border-[#B8925A]/15" />
+        <span className="relative text-4xl text-[#B8925A]/80">☯</span>
       </motion.div>
-      <p className="text-[#B8925A] tracking-widest text-sm mb-2">报告正在生成中</p>
-      <p className="text-[#1A0F05]/40 text-xs mb-4">请耐心等待，系统会自动完成...</p>
-      <p className="text-[#8B4513] text-sm font-medium mb-6">
+
+      <p className="text-[#B8925A] tracking-[0.3em] text-sm mb-3">报告正在生成中</p>
+      <p className="text-[#1A0F05]/40 text-xs mb-6">请耐心等待，系统会自动完成...</p>
+
+      <p className="text-[#8B4513] text-sm font-medium mb-8">
         自动刷新倒计时：{minutes}:{seconds.toString().padStart(2, '0')}
       </p>
 
-      {/* 免费复用提示 */}
-      <div className="mt-6 p-4 bg-[#B8925A]/5 border border-[#B8925A]/20 max-w-md mx-auto">
+      <div className="max-w-sm mx-auto p-5 bg-gradient-to-br from-[#B8925A]/5 to-transparent border border-[#B8925A]/15 rounded-xl">
         <p className="text-[#1A0F05]/60 text-xs leading-relaxed">
-          💡 <strong>温馨提示：</strong>使用相同邮箱和出生信息再次进入，<span className="text-[#B8925A]">7天内免费查看</span>，不会重复调用AI生成报告。
+          <span className="text-[#B8925A] mr-1">💡</span>
+          <strong className="text-[#8B4513]">温馨提示：</strong>
+          使用相同邮箱和出生信息再次进入，<span className="text-[#B8925A] font-medium">7天内免费查看</span>。
         </p>
       </div>
     </div>
   );
 }
 
-// ─── Component ─────────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ReportContent({ report }: ReportContentProps) {
   const [aiReport, setAiReport] = useState(report.aiReport);
@@ -424,14 +596,12 @@ export default function ReportContent({ report }: ReportContentProps) {
   const [generating, setGenerating] = useState(false);
   const [retryAfter, setRetryAfter] = useState(0);
 
-  // 如果没有AI报告，自动请求生成
   useEffect(() => {
     if (!report.aiReport || report.aiReport.length < 100) {
       generateAIReport();
     }
   }, [report.id]);
 
-  // 倒计时结束后重试
   useEffect(() => {
     if (retryAfter > 0) {
       const timer = setTimeout(() => {
@@ -457,7 +627,6 @@ export default function ReportContent({ report }: ReportContentProps) {
 
       const data = await response.json();
 
-      // 处理"正在生成"状态（10分钟内已调用过API）
       if (data.status === 'generating') {
         setGenerating(true);
         setRetryAfter(data.retryAfter || 60);
@@ -465,7 +634,6 @@ export default function ReportContent({ report }: ReportContentProps) {
         return;
       }
 
-      // 处理失败状态
       if (data.status === 'failed') {
         setError(data.error || '报告生成失败');
         setLoading(false);
@@ -485,59 +653,71 @@ export default function ReportContent({ report }: ReportContentProps) {
     }
   };
 
-  // 判断是否显示加载状态
   const isLoading = loading || generating;
 
   return (
-    <div className="min-h-screen bg-[#F7F3EC]">
+    <div className="min-h-screen bg-[#F7F3EC] relative">
+      {/* Background texture */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.015]" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23B8925A' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+      }} />
+
       {/* Header */}
-      <header className="border-b border-[#B8925A]/15 py-6 px-8 print:hidden">
+      <header className="sticky top-0 z-50 border-b border-[#B8925A]/10 py-4 px-8 print:hidden bg-[#F7F3EC]/95 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-70 transition-opacity">
-            <span className="text-[#B8925A] text-lg">☯</span>
+          <Link href="/" className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <motion.span
+              className="text-[#B8925A] text-xl"
+              whileHover={{ rotate: 180 }}
+              transition={{ duration: 0.5 }}
+            >
+              ☯
+            </motion.span>
             <span className="text-[#1A0F05] tracking-[0.2em] text-sm font-serif">
               天命玄机
             </span>
           </Link>
-          <span className="text-[#1A0F05]/40 text-xs">
-            报告生成时间: {new Date(report.createdAt).toLocaleString('zh-CN')}
+          <span className="text-[#1A0F05]/35 text-[10px] tracking-wide">
+            {new Date(report.createdAt).toLocaleString('zh-CN')}
           </span>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto py-8 px-4 md:py-16 md:px-8">
+      <main className="max-w-5xl mx-auto py-10 px-4 md:py-16 md:px-8 relative">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          transition={{ ...gentleSpring }}
         >
-          {/* Title Section with decorative border */}
-          <OrnamentalBorder className="mb-8 p-6 md:p-8 text-center">
+          {/* Title Section */}
+          <OrnamentalFrame className="mb-10 text-center">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              <p className="text-[#B8925A] tracking-[0.4em] text-xs mb-4 uppercase">
-                ✦ 紫微斗数命理报告 ✦
-              </p>
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <CloudPattern className="w-12 h-4 text-[#B8925A]" />
+                <span className="text-[#B8925A] text-xs tracking-[0.4em] font-medium">紫微斗数命理报告</span>
+                <CloudPattern className="w-12 h-4 text-[#B8925A] transform scale-x-[-1]" />
+              </div>
               <h1 className="text-[#1A0F05] text-2xl md:text-3xl font-light tracking-wide mb-3">
                 {report.gender === 'male' ? '男命' : '女命'} · {report.birthDate}
               </h1>
-              <p className="text-[#1A0F05]/60 text-sm">
+              <p className="text-[#1A0F05]/50 text-sm tracking-wide">
                 {getShichenName(report.birthTime)} · {report.birthCity}
               </p>
             </motion.div>
-          </OrnamentalBorder>
+          </OrnamentalFrame>
 
-          {/* 命盘显示 - 打印时单独一页 */}
+          {/* Chart Display */}
           {report.rawAstrolabe && (
             <motion.div
-              className="mb-8 print-chart-container print:mb-0"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
+              className="mb-10 print-chart-container print:mb-0"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...gentleSpring, delay: 0.1 }}
             >
               <MiniChart
                 palaces={report.rawAstrolabe.palaces}
@@ -549,117 +729,155 @@ export default function ReportContent({ report }: ReportContentProps) {
           )}
 
           {/* Content Area */}
-          {isLoading ? (
-            <motion.div
-              className="border border-[#B8925A]/20 p-8 md:p-12 print:hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              {generating ? (
-                <WaitingAnimation retryAfter={retryAfter} />
-              ) : (
-                <LoadingAnimation />
-              )}
-            </motion.div>
-          ) : error ? (
-            <motion.div
-              className="border border-red-300 bg-red-50 p-8 text-center print:hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <p className="text-red-600 mb-4">{error}</p>
-              <button
-                onClick={generateAIReport}
-                className="text-xs tracking-widest px-6 py-3 border border-[#B8925A] text-[#B8925A]
-                           hover:bg-[#B8925A] hover:text-[#F7F3EC] transition-all duration-300"
-              >
-                重试
-              </button>
-            </motion.div>
-          ) : (
-            <>
-              {/* Core Identity Card - 精致设计 */}
+          <AnimatePresence mode="wait">
+            {isLoading ? (
               <motion.div
-                className="mb-8 relative overflow-hidden print-identity-card"
+                key="loading"
+                className="border border-[#B8925A]/15 p-8 md:p-12 bg-white/30 backdrop-blur-sm rounded-2xl print:hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                {generating ? (
+                  <WaitingAnimation retryAfter={retryAfter} />
+                ) : (
+                  <LoadingAnimation />
+                )}
+              </motion.div>
+            ) : error ? (
+              <motion.div
+                key="error"
+                className="border border-red-200 bg-red-50/80 p-8 text-center rounded-2xl print:hidden"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
+                exit={{ opacity: 0 }}
               >
-                {/* 背景装饰 */}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#1A0F05] via-[#2D1F12] to-[#1A0F05]" />
-                <div className="absolute inset-0 opacity-10" style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23B8925A' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                }} />
+                <p className="text-red-600 mb-6">{error}</p>
+                <button
+                  onClick={generateAIReport}
+                  className="text-xs tracking-widest px-8 py-3 border border-[#B8925A] text-[#B8925A]
+                             hover:bg-[#B8925A] hover:text-[#F7F3EC] transition-all duration-300 rounded-lg"
+                >
+                  重试
+                </button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="content"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                {/* Core Identity Card */}
+                <motion.div
+                  className="mb-10 relative overflow-hidden rounded-2xl print-identity-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ ...springConfig, delay: 0.2 }}
+                >
+                  {/* Background layers */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#1A0F05] via-[#2D1F12] to-[#1A0F05]" />
+                  <div className="absolute inset-0 opacity-[0.08]" style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23B8925A' fill-opacity='0.5'%3E%3Cpath d='M40 40c0-11.046 8.954-20 20-20s20 8.954 20 20-8.954 20-20 20-20-8.954-20-20zm-40 0c0-11.046 8.954-20 20-20s20 8.954 20 20-8.954 20-20 20-20-8.954-20-20z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                  }} />
 
-                <div className="relative p-6 md:p-8 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <span className="text-[#B8925A]/40">✦</span>
-                    <p className="text-[#B8925A] text-xs tracking-[0.3em]">核心身份 · CORE IDENTITY</p>
-                    <span className="text-[#B8925A]/40">✦</span>
+                  {/* Shimmer effect */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
+                    animate={{ x: ['-100%', '200%'] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                  />
+
+                  <div className="relative p-8 md:p-10 text-center">
+                    <div className="flex items-center justify-center gap-3 mb-4">
+                      <motion.span
+                        className="text-[#B8925A]/50 text-sm"
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        ✧
+                      </motion.span>
+                      <p className="text-[#B8925A] text-xs tracking-[0.35em] font-medium">CORE IDENTITY</p>
+                      <motion.span
+                        className="text-[#B8925A]/50 text-sm"
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+                      >
+                        ✧
+                      </motion.span>
+                    </div>
+                    <p className="text-[#F7F3EC]/90 text-base md:text-lg leading-[1.8] tracking-wide max-w-2xl mx-auto">
+                      {coreIdentity}
+                    </p>
                   </div>
-                  <p className="text-[#F7F3EC] text-base leading-relaxed">{coreIdentity}</p>
-                </div>
 
-                {/* 底部装饰线 */}
-                <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#B8925A]/50 to-transparent" />
+                  {/* Bottom gradient line */}
+                  <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#B8925A]/60 to-transparent" />
+                  <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-transparent via-[#B8925A]/30 to-transparent" />
+                </motion.div>
+
+                {/* Lucky Elements */}
+                <LuckyElementsCard report={aiReport} />
+
+                {/* Ornate Divider */}
+                <ElegantDivider variant="ornate" />
+
+                {/* Report Content */}
+                <motion.div
+                  className="border border-[#B8925A]/10 p-8 md:p-12 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg shadow-[#B8925A]/5"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ ...gentleSpring, delay: 0.5 }}
+                >
+                  <div className="prose prose-sm max-w-none print:prose-base">
+                    {renderMarkdown(aiReport)}
+                  </div>
+                </motion.div>
+
+                {/* Final Divider */}
+                <ElegantDivider variant="ornate" />
+
+                {/* Closing Quote */}
+                <motion.div
+                  className="text-center mb-10"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.7 }}
+                >
+                  <div className="inline-block px-8 py-4 bg-gradient-to-br from-[#B8925A]/5 to-transparent rounded-xl border border-[#B8925A]/10">
+                    <p className="text-[#8B4513] text-sm tracking-wide leading-relaxed">
+                      "命由己造，相由心生。<br />
+                      <span className="text-[#8B4513]/70">知命者不怨天，知己者不怨人。"</span>
+                    </p>
+                  </div>
+                </motion.div>
               </motion.div>
+            )}
+          </AnimatePresence>
 
-              {/* 幸运元素卡片 */}
-              <LuckyElementsCard report={aiReport} />
-
-              {/* Section Divider */}
-              <SectionDivider />
-
-              {/* Report Content */}
-              <motion.div
-                className="border border-[#B8925A]/15 p-6 md:p-10 bg-white/50 shadow-sm"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-              >
-                <div className="prose prose-sm max-w-none print:prose-base">
-                  {renderMarkdown(aiReport)}
-                </div>
-              </motion.div>
-
-              {/* Final Divider */}
-              <SectionDivider symbol="☯" />
-
-              {/* Closing Statement */}
-              <motion.div
-                className="text-center mb-8"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6 }}
-              >
-                <p className="text-[#8B4513] text-sm italic">
-                  "命由己造，相由心生。知命者不怨天，知己者不怨人。"
-                </p>
-              </motion.div>
-            </>
-          )}
-
-          {/* Actions - 打印时隐藏 */}
-          <div className="mt-10 flex flex-col md:flex-row items-center justify-center gap-6 print:hidden">
+          {/* Actions */}
+          <div className="mt-12 flex flex-col md:flex-row items-center justify-center gap-4 print:hidden">
             <Link
               href="/"
-              className="text-xs tracking-widest px-8 py-3 border border-[#B8925A] text-[#B8925A]
-                         hover:bg-[#B8925A] hover:text-[#F7F3EC] transition-all duration-300"
+              className="group flex items-center gap-2 text-xs tracking-widest px-8 py-3.5 border border-[#B8925A]/40 text-[#B8925A]
+                         hover:bg-[#B8925A] hover:text-[#F7F3EC] hover:border-[#B8925A] transition-all duration-300 rounded-lg"
             >
-              重新推算
+              <span className="group-hover:-translate-x-1 transition-transform">←</span>
+              <span>重新推算</span>
             </Link>
             <button
               onClick={() => window.print()}
-              className="text-xs tracking-widest px-8 py-3 bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-[#F7F3EC]
-                         hover:from-[#A0522D] hover:to-[#8B4513] transition-all duration-300 shadow-md"
+              className="flex items-center gap-2 text-xs tracking-widest px-8 py-3.5 bg-gradient-to-r from-[#8B4513] via-[#A67B3C] to-[#8B4513] text-[#F7F3EC]
+                         hover:shadow-lg hover:shadow-[#B8925A]/20 transition-all duration-300 rounded-lg"
             >
-              📄 打印报告 / 保存PDF
+              <span>📄</span>
+              <span>打印报告 / 保存PDF</span>
             </button>
           </div>
 
           {/* Disclaimer */}
-          <div className="mt-12 pt-8 border-t border-[#B8925A]/10">
-            <p className="text-center text-[#1A0F05]/30 text-xs leading-relaxed tracking-wide">
+          <div className="mt-12 pt-8 border-t border-[#B8925A]/8">
+            <p className="text-center text-[#1A0F05]/25 text-[10px] leading-relaxed tracking-wide max-w-lg mx-auto">
               本报告基于紫微斗数命理分析，仅供参考。本网站不保留任何个人信息，数据仅储存7天后自动删除。
             </p>
           </div>
@@ -667,10 +885,15 @@ export default function ReportContent({ report }: ReportContentProps) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#B8925A]/15 py-8 px-8 bg-[#F0EBE1] print:hidden">
+      <footer className="border-t border-[#B8925A]/10 py-8 px-8 bg-[#F0EBE1]/80 print:hidden">
         <div className="max-w-5xl mx-auto text-center">
-          <p className="text-[#1A0F05]/30 text-xs tracking-wider">
-            © 2025 天命玄机 · Taoist Metaphysics
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <span className="text-[#B8925A]/50 text-xs">✧</span>
+            <span className="text-[#1A0F05]/30 text-xs tracking-[0.2em]">天命玄机</span>
+            <span className="text-[#B8925A]/50 text-xs">✧</span>
+          </div>
+          <p className="text-[#1A0F05]/20 text-[10px] tracking-wider">
+            © 2025 Taoist Metaphysics
           </p>
         </div>
       </footer>
