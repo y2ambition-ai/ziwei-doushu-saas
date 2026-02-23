@@ -317,7 +317,9 @@
         "API 响应缓存",
         "Core Web Vitals 达标"
       ],
-      "passes": true
+      "passes": true,
+      "completedAt": "2026-02-20",
+      "notes": "Tailwind CSS 4 + Next.js 15 自动优化"
     },
     {
       "id": "F025",
@@ -330,7 +332,9 @@
         "支付异常监控",
         "告警配置"
       ],
-      "passes": true
+      "passes": true,
+      "completedAt": "2026-02-21",
+      "notes": "Sentry @sentry/nextjs 集成完成"
     },
     {
       "id": "F026",

@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { motion } from 'motion/react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,11 @@ interface MiniChartProps {
   chineseDate?: string;
   fiveElementsClass?: string;
   chineseZodiac?: string;
+  // 额外信息用于中间显示
+  gender?: string;
+  birthDate?: string;
+  birthTime?: string;
+  birthCity?: string;
 }
 
 // ─── 12宫布局 ────────────────────────────────────────────────────────────────
@@ -41,7 +47,7 @@ const BRANCH_TO_INDEX: Record<string, number> = {
   '午': 6, '未': 7, '申': 8, '酉': 9, '戌': 10, '亥': 11,
 };
 
-// ─── Helper Functions ────────────────────────────────────────────────────────
+// ─── Helper Functions ───────────────────────────────────────────────────────
 
 function getPalaceByBranch(palaces: PalaceData[], branch: string): PalaceData | undefined {
   const index = BRANCH_TO_INDEX[branch];
@@ -50,7 +56,16 @@ function getPalaceByBranch(palaces: PalaceData[], branch: string): PalaceData | 
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export default function MiniChart({ palaces = [], chineseDate, fiveElementsClass, chineseZodiac }: MiniChartProps) {
+export default function MiniChart({
+  palaces = [],
+  chineseDate,
+  fiveElementsClass,
+  chineseZodiac,
+  gender,
+  birthDate,
+  birthTime,
+  birthCity,
+}: MiniChartProps) {
   // 解析四柱
   const siZhuParts = (chineseDate || '').split(' ');
   const siZhu = siZhuParts.length === 4
@@ -58,51 +73,82 @@ export default function MiniChart({ palaces = [], chineseDate, fiveElementsClass
     : null;
 
   return (
-    <div className="bg-[#F7F3EC] border border-[#B8925A]/30 p-4 print:break-inside-avoid">
-      {/* 标题 */}
-      <div className="text-center mb-4">
-        <p className="text-[#B8925A] text-xs tracking-widest">紫微斗數命盤</p>
+    <div className="bg-gradient-to-br from-[#F7F3EC] via-[#FDF8F0] to-[#F7F3EC] border-2 border-[#B8925A]/40 p-6 print:break-inside-avoid shadow-lg shadow-[#B8925A]/10">
+      {/* 顶部标题 */}
+      <div className="text-center mb-5 pb-4 border-b border-[#B8925A]/20">
+        <motion.p
+          className="text-[#B8925A] text-sm tracking-[0.3em] font-medium"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          紫微斗數命盤
+        </motion.p>
       </div>
 
-      {/* 基本信息 */}
-      <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
-        {siZhu && (
-          <div className="flex gap-2">
-            <span className="text-[#1A0F05]/50">四柱:</span>
-            <span className="text-[#1A0F05] font-medium">
-              {siZhu.year} {siZhu.month} {siZhu.day} {siZhu.hour}
-            </span>
-          </div>
-        )}
-        {fiveElementsClass && (
-          <div className="flex gap-2">
-            <span className="text-[#1A0F05]/50">五行:</span>
-            <span className="text-[#1A0F05] font-medium">{fiveElementsClass}</span>
-          </div>
-        )}
-        {chineseZodiac && (
-          <div className="flex gap-2">
-            <span className="text-[#1A0F05]/50">生肖:</span>
-            <span className="text-[#1A0F05] font-medium">{chineseZodiac}</span>
-          </div>
-        )}
-      </div>
-
-      {/* 12宫格 - 简化版 */}
-      <div className="grid grid-cols-4 gap-0.5 text-[10px]">
+      {/* 12宫格 */}
+      <div className="grid grid-cols-4 gap-1 text-sm">
         {PALACE_LAYOUT.map((row, rowIndex) =>
           row.map((branch, colIndex) => {
             if (branch === null) {
-              // 中心区域 - 留空或放简化信息
+              // 中心区域 - 显示核心信息
               if (rowIndex === 1 && colIndex === 1) {
                 return (
-                  <div
+                  <motion.div
                     key={`${rowIndex}-${colIndex}`}
-                    className="row-span-2 col-span-2 border border-[#B8925A]/20 bg-[#FDF8F0] p-2 flex items-center justify-center"
+                    className="row-span-2 col-span-2 border-2 border-[#B8925A]/30 bg-gradient-to-br from-[#FDF8F0] via-[#F5EDE0] to-[#FDF8F0] p-4 flex flex-col items-center justify-center min-h-[140px]"
                     style={{ gridColumn: 'span 2', gridRow: 'span 2' }}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
                   >
-                    <span className="text-[#B8925A] text-lg">☯</span>
-                  </div>
+                    {/* 太极图标动画 */}
+                    <motion.div
+                      className="text-[#B8925A] text-2xl mb-3"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+                    >
+                      ☯
+                    </motion.div>
+
+                    {/* 核心信息 */}
+                    <motion.div
+                      className="text-center space-y-1"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.4 }}
+                    >
+                      {gender && birthDate && (
+                        <p className="text-[#1A0F05] text-sm font-medium">
+                          {gender === 'male' ? '男命' : '女命'} · {birthDate}
+                        </p>
+                      )}
+                      {birthTime && (
+                        <p className="text-[#8B4513] text-xs">
+                          {birthTime}
+                        </p>
+                      )}
+                      {birthCity && (
+                        <p className="text-[#1A0F05]/50 text-xs">
+                          {birthCity}
+                        </p>
+                      )}
+                    </motion.div>
+
+                    {/* 四柱 */}
+                    {siZhu && (
+                      <motion.div
+                        className="mt-2 text-center"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.5 }}
+                      >
+                        <p className="text-[#1A0F05]/70 text-[10px] tracking-wider">
+                          {siZhu.year} {siZhu.month} {siZhu.day} {siZhu.hour}
+                        </p>
+                      </motion.div>
+                    )}
+                  </motion.div>
                 );
               }
               return null;
@@ -113,36 +159,63 @@ export default function MiniChart({ palaces = [], chineseDate, fiveElementsClass
             const minorStars = palace?.minorStars?.map(s => s.name).join(' ') || '';
 
             return (
-              <div
+              <motion.div
                 key={branch}
-                className="border border-[#B8925A]/20 p-1 min-h-[60px]"
+                className="border border-[#B8925A]/25 p-2 min-h-[70px] bg-white/30"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 + (rowIndex * 4 + colIndex) * 0.02 }}
               >
                 <div className="flex justify-between items-start">
-                  <span className="text-[#B8925A] font-medium">{palace?.name || branch}</span>
+                  <span className="text-[#B8925A] font-medium text-sm">{palace?.name || branch}</span>
                   {palace?.decadal?.range && (
-                    <span className="text-[#8B0000] text-[8px]">
+                    <span className="text-[#8B0000] text-[10px]">
                       {palace.decadal.range[0]}-{palace.decadal.range[1]}
                     </span>
                   )}
                 </div>
                 {majorStars && (
-                  <div className="text-[#8B0000] font-medium leading-tight mt-0.5">
+                  <div className="text-[#8B0000] font-medium text-xs leading-tight mt-1">
                     {majorStars}
                   </div>
                 )}
                 {minorStars && (
-                  <div className="text-[#1A0F05]/70 leading-tight text-[9px] mt-0.5">
+                  <div className="text-[#1A0F05]/70 text-[10px] leading-tight mt-0.5">
                     {minorStars}
                   </div>
                 )}
-              </div>
+              </motion.div>
             );
           })
         )}
       </div>
 
+      {/* 底部信息 */}
+      <div className="mt-4 pt-4 border-t border-[#B8925A]/20">
+        <div className="grid grid-cols-3 gap-4 text-xs text-center">
+          {fiveElementsClass && (
+            <div>
+              <span className="text-[#1A0F05]/50">五行局：</span>
+              <span className="text-[#1A0F05] font-medium">{fiveElementsClass}</span>
+            </div>
+          )}
+          {chineseZodiac && (
+            <div>
+              <span className="text-[#1A0F05]/50">生肖：</span>
+              <span className="text-[#1A0F05] font-medium">{chineseZodiac}</span>
+            </div>
+          )}
+          {siZhu && (
+            <div>
+              <span className="text-[#1A0F05]/50">四柱：</span>
+              <span className="text-[#1A0F05] font-medium">{siZhu.year} {siZhu.month}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* 图例 */}
-      <div className="flex justify-center gap-4 mt-3 text-[8px] text-[#1A0F05]/50">
+      <div className="flex justify-center gap-6 mt-3 text-[10px] text-[#1A0F05]/40">
         <span><span className="text-[#8B0000]">红色</span> = 主星</span>
         <span><span className="text-[#1A0F05]/70">黑色</span> = 辅星</span>
       </div>
