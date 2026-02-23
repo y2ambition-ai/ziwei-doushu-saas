@@ -106,12 +106,14 @@ function parseAstrolabe(raw: unknown, solarResult: { shichen: number; shichenNam
   const earthlyBranchOfSoulPalace = String(data?.earthlyBranchOfSoulPalace || '');
   const earthlyBranchOfBodyPalace = String(data?.earthlyBranchOfBodyPalace || '');
 
-  // 提取四柱
+  // 提取四柱 - 从 chineseDate 字段获取（格式："庚午 壬午 辛亥 甲午"）
+  const chineseDate = String(data?.chineseDate || '');
+  const dateParts = chineseDate.split(' ');
   const siZhu = {
-    year: String((data?.year as Record<string, string>)?.categorical || ''),
-    month: String((data?.month as Record<string, string>)?.categorical || ''),
-    day: String((data?.day as Record<string, string>)?.categorical || ''),
-    hour: String((data?.hour as Record<string, string>)?.categorical || ''),
+    year: dateParts[0] || '',
+    month: dateParts[1] || '',
+    day: dateParts[2] || '',
+    hour: dateParts[3] || '',
   };
 
   // 提取十二宫

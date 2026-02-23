@@ -45,22 +45,6 @@ const SHICHEN = [
   { value: 'hai', label: '亥时 · 21:00–23:00', animal: '猪', hour: 22, shichenIndex: 11 },
 ];
 
-// 常见国家/地区列表（按华人数量排序）
-const COUNTRIES = [
-  { value: 'CN', label: '中国 China', education: '高考、考研、考公', currency: '人民币', career: '公务员、国企、事业单位' },
-  { value: 'US', label: '美国 United States', education: 'SAT/ACT、大学申请、研究生申请', currency: '美元', career: '科技公司、金融、创业' },
-  { value: 'SG', label: '新加坡 Singapore', education: 'A-Level、O-Level、理工学院', currency: '新币', career: '金融、科技、跨国公司' },
-  { value: 'MY', label: '马来西亚 Malaysia', education: 'STPM、UEC、大学申请', currency: '马币', career: '商业、制造业、服务业' },
-  { value: 'CA', label: '加拿大 Canada', education: '高中毕业、大学申请', currency: '加币', career: '科技、医疗、公共服务' },
-  { value: 'AU', label: '澳大利亚 Australia', education: 'ATAR、大学申请', currency: '澳币', career: '矿业、农业、服务业' },
-  { value: 'UK', label: '英国 United Kingdom', education: 'A-Level、GCSE、UCAS申请', currency: '英镑', career: '金融、法律、医疗' },
-  { value: 'NZ', label: '新西兰 New Zealand', education: 'NCEA、大学申请', currency: '纽币', career: '农业、旅游、服务业' },
-  { value: 'JP', label: '日本 Japan', education: 'センター試験、大学受験', currency: '日元', career: '制造业、科技、服务业' },
-  { value: 'KR', label: '韩国 South Korea', education: '수능、大学入试', currency: '韩元', career: '科技、制造业、娱乐' },
-  { value: 'TW', label: '台湾 Taiwan', education: '学测、指考、大学申请', currency: '台币', career: '科技、制造业、服务业' },
-  { value: 'HK', label: '香港 Hong Kong', education: 'DSE、大学联招', currency: '港币', career: '金融、贸易、专业服务' },
-  { value: 'OTHER', label: '其他地区 Other Regions', education: '本地教育体系', currency: '当地货币', career: '当地行业' },
-];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -80,7 +64,6 @@ export default function HomePage() {
   const [form, setForm] = useState({
     email: '',
     gender: '',
-    country: '',
     year: '',
     month: '',
     day: '',
@@ -111,7 +94,6 @@ export default function HomePage() {
     if (!form.email) errors.email = '请填写邮箱';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = '邮箱格式不正确';
     if (!form.gender) errors.gender = '请选择性别';
-    if (!form.country) errors.country = '请选择所在国家/地区';
     if (!form.year) errors.year = '请选择出生年份';
     if (!form.month) errors.month = '请选择出生月份';
     if (!form.day) errors.day = '请选择出生日期';
@@ -148,7 +130,6 @@ export default function HomePage() {
         body: JSON.stringify({
           email: form.email,
           gender: form.gender,
-          country: form.country,
           birthDate,
           birthTime: shichenData?.hour ?? 12,
           birthMinute: 0,
@@ -179,7 +160,7 @@ export default function HomePage() {
   };
 
   const resetForm = () => {
-    setForm({ email: '', gender: '', country: '', year: '', month: '', day: '', shichen: '', currentHour: '', currentMinute: '' });
+    setForm({ email: '', gender: '', year: '', month: '', day: '', shichen: '', currentHour: '', currentMinute: '' });
   };
 
   const inputCls =
@@ -374,32 +355,6 @@ export default function HomePage() {
               </div>
               {validationErrors.gender && (
                 <p className="text-red-500 text-xs mt-1">{validationErrors.gender}</p>
-              )}
-            </div>
-
-            {/* Country */}
-            <div id="field-country">
-              <label className="block text-[#1A0F05]/60 text-xs tracking-widest mb-2">
-                所在国家/地区 · Current Location
-              </label>
-              <p className="text-[#1A0F05]/40 text-xs mb-2">
-                帮助AI提供更贴合您当地文化的建议
-              </p>
-              <div className="relative">
-                <select
-                  value={form.country}
-                  onChange={(e) => { setForm({ ...form, country: e.target.value }); setValidationErrors({ ...validationErrors, country: '' }); }}
-                  className={`${selectCls} ${validationErrors.country ? 'border-red-500 bg-red-50' : ''}`}
-                >
-                  <option value="">请选择国家/地区</option>
-                  {COUNTRIES.map((c) => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#B8925A]/60 text-xs">▾</span>
-              </div>
-              {validationErrors.country && (
-                <p className="text-red-500 text-xs mt-1">{validationErrors.country}</p>
               )}
             </div>
 
@@ -621,7 +576,7 @@ export default function HomePage() {
                 onClick={() => {
                   setSubmitted(false);
                   setReportData(null);
-                  setForm({ email: '', gender: '', country: '', year: '', month: '', day: '', shichen: '', currentHour: '', currentMinute: '' });
+                  setForm({ email: '', gender: '', year: '', month: '', day: '', shichen: '', currentHour: '', currentMinute: '' });
                   scrollToForm();
                 }}
                 className="text-xs tracking-widest text-[#B8925A] border-b border-[#B8925A]/40 pb-0.5 hover:border-[#B8925A] transition-colors duration-300"

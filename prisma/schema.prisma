@@ -1,14 +1,10 @@
-// Prisma Schema for ZiWei SaaS
-// Supports both SQLite (local) and PostgreSQL (production)
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model Customer {
@@ -19,51 +15,40 @@ model Customer {
 }
 
 model Order {
-  id              String   @id @default(cuid())
+  id              String      @id @default(cuid())
   customerId      String
-  customer        Customer @relation(fields: [customerId], references: [id])
-  stripeSessionId String   @unique
+  stripeSessionId String      @unique
   status          OrderStatus @default(pending)
   amount          Float
-  createdAt       DateTime @default(now())
+  createdAt       DateTime    @default(now())
   paidAt          DateTime?
-  report          Report?  @relation("OrderToReport")
+  customer        Customer    @relation(fields: [customerId], references: [id])
+  report          Report?     @relation("OrderToReport")
 }
 
 model Report {
-  id            String   @id @default(cuid())
-  orderId       String?  @unique // Optional for free test reports
-  order         Order?   @relation("OrderToReport", fields: [orderId], references: [id])
-
-  // User input
+  id            String    @id @default(cuid())
+  orderId       String?   @unique
   email         String
-  gender        String   // "male" | "female"
-  country       String?  // ISO country code: CN, US, SG, MY, CA, AU, UK, etc.
-  birthDate     String   // YYYY-MM-DD
-  birthTime     Int      // 0-23 hour
-  birthMinute   Int      @default(0)
+  gender        String
+  birthDate     String
+  birthTime     Int
+  birthMinute   Int       @default(0)
   birthCity     String
   longitude     Float
-  latitude      Float    @default(0)
-  trueSolarTime String?  // Calculated true solar time
-
-  // Astrology data
-  rawAstrolabe  String?  // JSON string - iztro raw output
-  parsedData    String?  // JSON string - parsed core data
-
-  // AI generated
-  aiReport      String?  // Markdown format AI interpretation
-  coreIdentity  String?  // Core identity card, e.g. "Ming Gong: ZiWei·QiSha"
-
-  // API call tracking (防止重复调用)
-  apiCalledAt   DateTime? // API调用时间
-  apiRetryCount Int      @default(0) // 重试次数
-
-  // Payment tracking
-  paidAt        DateTime? // 付费时间，用于7天免费复用判断
-
-  createdAt     DateTime @default(now())
+  latitude      Float     @default(0)
+  trueSolarTime String?
+  rawAstrolabe  String?
+  parsedData    String?
+  aiReport      String?
+  coreIdentity  String?
+  apiCalledAt   DateTime?
+  apiRetryCount Int       @default(0)
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
   completedAt   DateTime?
+  country       String?
+  order         Order?    @relation("OrderToReport", fields: [orderId], references: [id])
 }
 
 enum OrderStatus {

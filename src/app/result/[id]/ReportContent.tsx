@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Link from 'next/link';
-import MiniChart from '@/components/MiniChart';
+import FullChart from '@/components/FullChart';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -612,7 +612,32 @@ function WaitingAnimation({ retryAfter }: { retryAfter: number }) {
 
 export default function ReportContent({ report }: ReportContentProps) {
   const [aiReport, setAiReport] = useState(report.aiReport);
-  const [coreIdentity, setCoreIdentity] = useState(report.coreIdentity);
+
+  // 动态计算 coreIdentity（如果存储的是旧错误数据）
+  const computeCoreIdentity = () => {
+    // 检查存储的 coreIdentity 是否有效
+    if (report.coreIdentity && !report.coreIdentity.includes('，，') && !report.coreIdentity.includes('年月日')) {
+      return report.coreIdentity;
+    }
+
+    // 从 rawAstrolabe 重新计算
+    const astrolabe = report.rawAstrolabe;
+    if (!astrolabe) return report.coreIdentity;
+
+    const mingGong = astrolabe.palaces?.find(p => p.name === '命宫');
+    const majorStars = mingGong?.majorStars?.map(s => s.name).join('·') || '空宫';
+
+    // 解析四柱
+    const chineseDate = astrolabe.chineseDate || '';
+    const siZhuParts = chineseDate.split(' ');
+    const siZhu = siZhuParts.length === 4
+      ? `${siZhuParts[0]}年${siZhuParts[1]}月${siZhuParts[2]}日${siZhuParts[3]}时`
+      : '';
+
+    return `命宫${majorStars}坐守，${astrolabe.fiveElementsClass || ''}，四柱${siZhu}生。`;
+  };
+
+  const [coreIdentity, setCoreIdentity] = useState(computeCoreIdentity());
   const [loading, setLoading] = useState(!report.aiReport || report.aiReport.length < 100);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -712,27 +737,6 @@ export default function ReportContent({ report }: ReportContentProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...gentleSpring }}
         >
-          {/* Title Section */}
-          <OrnamentalFrame className="mb-10 text-center">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <CloudPattern className="w-12 h-4 text-[#B8925A]" />
-                <span className="text-[#B8925A] text-xs tracking-[0.4em] font-medium">紫微斗数命理报告</span>
-                <CloudPattern className="w-12 h-4 text-[#B8925A] transform scale-x-[-1]" />
-              </div>
-              <h1 className="text-[#1A0F05] text-2xl md:text-3xl font-light tracking-wide mb-3">
-                {report.gender === 'male' ? '男命' : '女命'} · {report.birthDate}
-              </h1>
-              <p className="text-[#1A0F05]/50 text-sm tracking-wide">
-                {getShichenName(report.birthTime)} · {report.birthCity}
-              </p>
-            </motion.div>
-          </OrnamentalFrame>
-
           {/* Chart Display */}
           {report.rawAstrolabe && (
             <motion.div
@@ -741,11 +745,12 @@ export default function ReportContent({ report }: ReportContentProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...gentleSpring, delay: 0.1 }}
             >
-              <MiniChart
-                palaces={report.rawAstrolabe.palaces}
-                chineseDate={report.rawAstrolabe.chineseDate}
-                fiveElementsClass={report.rawAstrolabe.fiveElementsClass}
-                chineseZodiac={report.rawAstrolabe.chineseZodiac}
+              <FullChart
+                rawAstrolabe={report.rawAstrolabe}
+                gender={report.gender}
+                birthDate={report.birthDate}
+                birthTime={report.birthTime}
+                birthCity={report.birthCity}
               />
             </motion.div>
           )}
@@ -837,9 +842,6 @@ export default function ReportContent({ report }: ReportContentProps) {
                   <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#B8925A]/60 to-transparent" />
                   <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-transparent via-[#B8925A]/30 to-transparent" />
                 </motion.div>
-
-                {/* Lucky Elements */}
-                <LuckyElementsCard report={aiReport} />
 
                 {/* Ornate Divider */}
                 <ElegantDivider variant="ornate" />

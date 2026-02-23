@@ -82,7 +82,7 @@ pnpm build
 **当前分支**: main
 **生产地址**: https://ziwei-doushu-saas.vercel.app
 **GitHub**: https://github.com/y2ambition-ai/ziwei-doushu-saas
-**最后会话**: 2026-02-23 11:10 - ✅ 居中修复 + 报告页重设计 + 幸运色修复
+**最后会话**: 2026-02-24 - ✅ 报告页命盘重设计 + 四柱修复 + 国家字段删除
 **里程碑**: MVP 完成，生产环境稳定运行
 
 ### MVP 功能验证 ✅
@@ -128,6 +128,44 @@ pnpm build
    - 删除 `tsconfig.tsbuildinfo`（构建缓存）
    - 删除 `package-lock.json`（使用 pnpm）
    - 更新 `.gitignore`
+
+### 本会话新增 (2026-02-24)
+
+1. **本地代码与 GitHub 对齐**
+   - 使用 `git reset --hard origin/main` 重置本地代码
+   - 修复 prisma/schema.prisma 的 enum default 问题（`"pending"` → `pending`）
+
+2. **删除国家/地区字段** (`src/app/page.tsx`)
+   - 删除 COUNTRIES 常量
+   - 删除表单中的 country 字段
+   - 删除验证逻辑
+   - API 已有默认值处理
+
+3. **修复四柱数据提取** (`src/lib/ziwei/wrapper.ts`)
+   - 问题：从 `data.year.categorical` 获取四柱失败
+   - 修复：从 `chineseDate` 字段解析（格式："辛卯 己亥 乙亥 壬午"）
+   ```typescript
+   const chineseDate = String(data?.chineseDate || '');
+   const dateParts = chineseDate.split(' ');
+   const siZhu = {
+     year: dateParts[0] || '',
+     month: dateParts[1] || '',
+     day: dateParts[2] || '',
+     hour: dateParts[3] || '',
+   };
+   ```
+
+4. **新建完整命盘组件** (`src/components/FullChart.tsx`)
+   - 替代简化版 MiniChart
+   - 包含：基本信息卡片、12宫格命盘、图例说明
+   - 支持：主星、辅星、杂耀、大限、长生12神、博士12神等
+   - 动画效果：太极旋转、八卦环装饰
+
+5. **报告页面优化** (`src/app/result/[id]/ReportContent.tsx`)
+   - 删除顶部重复的标题区域（命盘中间已显示）
+   - 删除 LuckyElementsCard 幸运元素卡片
+   - 使用 FullChart 替代 MiniChart
+   - **动态计算 coreIdentity**：如果存储的是错误数据（含"年月日"或"，"），从 rawAstrolabe 重新生成
 
 ### 本会话新增 (2026-02-22 晚)
 
