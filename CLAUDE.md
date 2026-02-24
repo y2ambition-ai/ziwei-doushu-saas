@@ -7,12 +7,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 **Product**: 紫微斗数在线排盘与 AI 命理解析 SaaS
+**Version**: **v1.0.0** (Baseline Release - 2026-02-24)
 **Business Model**: 单次付费 $1.99 USD
 **Core Value**: 火山引擎豆包大模型将命盘数据转化为通俗、有情绪价值的命运解析长文
 **Status**: MVP 完成，生产环境稳定运行
 
 **Production URL**: https://ziwei-doushu-saas.vercel.app
 **GitHub**: https://github.com/y2ambition-ai/ziwei-doushu-saas
+
+---
+
+## v1.0.0 Baseline Features
+
+- ✅ 完整紫微斗数排盘（12宫格布局，iztro 引擎）
+- ✅ 豆包 AI 命理解读（全球化提示词，通用职业/教育描述）
+- ✅ Stripe 支付集成（$1.99 单次付费）
+- ✅ 7天免费复用机制
+- ✅ 东方禅意 UI 设计
+- ✅ A4 打印格式支持
+- ✅ 幸运元素展示（颜色/数字/方位）
 
 ---
 

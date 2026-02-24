@@ -1,6 +1,13 @@
 # 紫微斗数在线排盘 SaaS
 
+![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)
+![Status](https://img.shields.io/badge/status-production-blue)
+
+**[在线演示](https://ziwei-doushu-saas.vercel.app)** | **[GitHub](https://github.com/y2ambition-ai/ziwei-doushu-saas)**
+
 在线紫微斗数排盘与 AI 命理解析服务。用户输入出生信息，系统生成传统命盘，并通过火山引擎豆包大模型生成个性化命理解读报告。
+
+> **v1.0.0 Baseline Release (2026-02-24)** - MVP 完成，全球化提示词优化，生产环境稳定运行
 
 ## 功能特性
 
