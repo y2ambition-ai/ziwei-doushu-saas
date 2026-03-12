@@ -250,7 +250,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
                   locale === 'zh' ? 'text-4xl md:text-5xl' : 'text-3xl md:text-4xl'
                 }`}
               >
-                <span className="block mb-2 text-[#1a0f05]">{heroTitleLines[0]}</span>   
+                <span className="block mb-4 text-[#1a0f05]">{heroTitleLines[0]}</span>   
                 <span className="block mb-2 text-[#b8925a]">{heroTitleLines[1]}</span>
                 <span className="block text-[#b8925a]">{heroTitleLines[2]}</span>   
               </motion.h1>
