@@ -6,6 +6,7 @@
 - 技术栈：Next.js 15 App Router、React 19、TypeScript、Prisma、Stripe + AI
 - 默认语言：`en`
 - 中文入口：`/zh`
+- 线上正式域名：`https://ziwei-doushu-saas.vercel.app`
 - 当前支付路径：Stripe Checkout + Webhook + 本地化 Success 页
 - 最近清理时间：`2026-03-12`
 
@@ -75,6 +76,16 @@
 - `pnpm exec tsc --noEmit`
 - `pnpm test -- --run`
 - `pnpm build`
+
+## 部署快照 (2026-03-12)
+
+- 最近一次发布分支：`release/locale-lock-age-neutral`
+- 最近一次发布提交：`b793b37d2`
+- Vercel Preview：`https://ziwei-doushu-saas-7lgsx6i63-y2ambition-ais-projects.vercel.app`
+- Vercel Production：`https://ziwei-doushu-saas.vercel.app`
+- 本次已修复 Vercel 函数体积超限问题；根因是本地无库兜底曾写入 `.next/cache`，现已改为本地 `.local/temp-reports.json` / Vercel 系统临时目录
+- 生产环境已确认 `DOUBAO_API_KEY`、`DOUBAO_MODEL`、`DOUBAO_BASE_URL`、`NEXT_PUBLIC_URL` 生效，线上中英文 AI 报告可真实生成
+- 生产环境尚未配置 Stripe 正式变量；未补齐 `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`STRIPE_PUBLISHABLE_KEY` 前，线上仍按无真实支付密钥的兜底逻辑运行
 
 ## 文档约定
 
