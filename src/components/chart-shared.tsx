@@ -6,6 +6,15 @@
 import React from 'react';
 import { motion } from 'motion/react';
 
+import { Locale } from '@/lib/i18n/config';
+import {
+  getLocalizedShichenName,
+  getWesternZodiac as getLocalizedWesternZodiac,
+  localizeEarthlyBranch,
+  localizeGender,
+  localizePalaceName,
+} from '@/lib/i18n/chart';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface PalaceData {
@@ -133,33 +142,12 @@ export function Divider() {
 
 // ─── Helper Functions ───────────────────────────────────────────────────────────
 
-export function getShichenName(hour: number): string {
-  const shichenMap: Record<number, string> = {
-    0: '子时', 1: '丑时', 2: '寅时', 3: '卯时',
-    4: '辰时', 5: '巳时', 6: '午时', 7: '未时',
-    8: '申时', 9: '酉时', 10: '戌时', 11: '亥时',
-  };
-  const shichenIndex = hour === 23 ? 0 : Math.floor((hour + 1) / 2);
-  return shichenMap[shichenIndex] || '未知';
+export function getShichenName(hour: number, locale: Locale = 'en'): string {
+  return getLocalizedShichenName(hour, locale);
 }
 
-export function getWesternZodiac(birthDate: string): string {
-  const date = new Date(birthDate);
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-
-  if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return '白羊座';
-  if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return '金牛座';
-  if ((month === 5 && day >= 21) || (month === 6 && day <= 21)) return '双子座';
-  if ((month === 6 && day >= 22) || (month === 7 && day <= 22)) return '巨蟹座';
-  if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return '狮子座';
-  if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return '处女座';
-  if ((month === 9 && day >= 23) || (month === 10 && day <= 23)) return '天秤座';
-  if ((month === 10 && day >= 24) || (month === 11 && day <= 22)) return '天蝎座';
-  if ((month === 11 && day >= 23) || (month === 12 && day <= 21)) return '射手座';
-  if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return '摩羯座';
-  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return '水瓶座';
-  return '双鱼座';
+export function getWesternZodiac(birthDate: string, locale: Locale = 'en'): string {
+  return getLocalizedWesternZodiac(birthDate, locale);
 }
 
 export function getPalaceByBranch(palaces: PalaceData[], branch: string): PalaceData | null {
@@ -191,11 +179,12 @@ export function StarBadge({ name, brightness, isMain }: {
 
 // ─── Palace Cell Component ──────────────────────────────────────────────────────
 
-export function PalaceCell({ palace, isCenter, astrolabe, minHeight = 'md:min-h-[180px]' }: {
+export function PalaceCell({ palace, isCenter, astrolabe, minHeight = 'md:min-h-[180px]', locale = 'en' }: {
   palace: PalaceData | null;
   isCenter: boolean;
   astrolabe: RawAstrolabe | null;
   minHeight?: string;
+  locale?: Locale;
 }) {
   if (isCenter) {
     return (
@@ -221,8 +210,10 @@ export function PalaceCell({ palace, isCenter, astrolabe, minHeight = 'md:min-h-
           >
             <TaiChiSymbol className="w-12 h-12 md:w-16 md:h-16 mx-auto text-[#8B4513]" />
           </motion.div>
-          <p className="text-[#8B4513] text-[10px] tracking-[0.3em] mb-2 font-medium">紫微斗數</p>
-          <p className="text-base md:text-lg mb-1 font-medium">{astrolabe?.gender === '男' ? '男命' : '女命'}</p>
+          <p className="text-[#8B4513] text-[10px] tracking-[0.3em] mb-2 font-medium">
+            {locale === 'zh' ? '紫微斗數' : 'ZI WEI DOU SHU'}
+          </p>
+          <p className="text-base md:text-lg mb-1 font-medium">{localizeGender(locale, astrolabe?.gender)}</p>
           <p className="text-xs text-[#1A0F05]/60">{astrolabe?.lunarDate || ''}</p>
           <div className="mt-3 pt-3 border-t border-[#8B4513]/20">
             <p className="text-[#8B4513] text-[10px] tracking-wider">五行局</p>
@@ -248,12 +239,12 @@ export function PalaceCell({ palace, isCenter, astrolabe, minHeight = 'md:min-h-
                     flex flex-col min-h-[140px] ${minHeight}`}>
       <div className="flex items-start justify-between mb-1">
         <div className="flex items-center gap-1">
-          <span className="text-[#B8925A] font-medium text-xs md:text-sm">{palace.name}</span>
+          <span className="text-[#B8925A] font-medium text-xs md:text-sm">{localizePalaceName(locale, palace.name)}</span>
         </div>
         <div className="flex flex-col items-end gap-0.5">
           <div className="flex items-center gap-0.5 bg-[#1A0F05]/5 px-1.5 py-0.5 rounded">
             <span className="text-[#1A0F05] text-[10px] font-medium">{palace.heavenlyStem}</span>
-            <span className="text-[#B8925A] text-[10px]">{palace.earthlyBranch}</span>
+            <span className="text-[#B8925A] text-[10px]">{localizeEarthlyBranch(locale, palace.earthlyBranch)}</span>
           </div>
           {palace.decadal?.range && (
             <span className="text-[#8B0000] text-[8px] md:text-[9px] font-medium">
@@ -271,7 +262,7 @@ export function PalaceCell({ palace, isCenter, astrolabe, minHeight = 'md:min-h-
             ))}
           </div>
         ) : (
-          <span className="text-[#1A0F05]/20 text-[10px] italic">空宫</span>
+          <span className="text-[#1A0F05]/20 text-[10px] italic">{locale === 'zh' ? '空宫' : 'No major stars'}</span>
         )}
 
         {minorStars.length > 0 && (

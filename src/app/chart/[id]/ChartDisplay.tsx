@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import {
   PalaceData,
   RawAstrolabe,
@@ -17,6 +19,10 @@ import {
   getPalaceByBranch,
   PalaceCell,
 } from '@/components/chart-shared';
+import { Locale } from '@/lib/i18n/config';
+import { getDictionary } from '@/lib/i18n/dictionaries';
+import { getLocalizedPath } from '@/lib/i18n/routes';
+import { localizeChineseZodiac, localizeGender } from '@/lib/i18n/chart';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,25 +36,30 @@ interface ReportData {
   rawAstrolabe: RawAstrolabe | null;
   createdAt: string;
   hasAIReport?: boolean;
+  isPaid?: boolean;
 }
 
 interface ChartDisplayProps {
+  locale: Locale;
   report: ReportData;
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
-export default function ChartDisplay({ report }: ChartDisplayProps) {
+export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [freeReuseMessage, setFreeReuseMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const astrolabe = report.rawAstrolabe;
   const palaces = astrolabe?.palaces || [];
+  const dictionary = getDictionary(locale).chart;
 
   // 获取大师解读
   const handleGetReading = async () => {
     setLoading(true);
     setFreeReuseMessage(null);
+    setActionError(null);
     try {
       const response = await fetch('/api/checkout', {
         method: 'POST',
@@ -61,28 +72,31 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
           birthMinute: 0,
           birthCity: report.birthCity,
           reportId: report.id,
+          locale,
         }),
       });
 
       const data = await response.json();
 
+      if (!response.ok) {
+        throw new Error(data.error || dictionary.paymentError);
+      }
+
       if (data.freeReuse && data.reportId) {
-        // 7天内免费复用，显示提示后跳转
-        setFreeReuseMessage(`您在${data.daysRemaining}天内已生成过相同参数的解读，正在为您跳转...`);
+        setFreeReuseMessage(`${dictionary.freeReusePrefix}${data.daysRemaining}${dictionary.freeReuseSuffix}`);
         setTimeout(() => {
-          router.push(`/result/${data.reportId}`);
+          router.push(getLocalizedPath(locale, `/result/${data.reportId}`));
         }, 1500);
       } else if (data.url) {
-        // 需要付费，跳转到 Stripe
         window.location.href = data.url;
       } else if (data.isMock) {
-        // Mock 模式，直接跳转到结果页
-        router.push(`/result/${report.id}`);
+        router.push(getLocalizedPath(locale, `/result/${report.id}`));
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      // 出错时也跳转到结果页
-      router.push(`/result/${report.id}`);
+      setActionError(error instanceof Error ? error.message : dictionary.paymentError);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -94,15 +108,15 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
         if (cell === 'CENTER') {
           if (rowIndex === 1 && colIndex === 1) {
             cells.push(
-              <PalaceCell key="center" palace={null} isCenter astrolabe={astrolabe} minHeight="md:min-h-[200px]" />
+              <PalaceCell key="center" palace={null} isCenter astrolabe={astrolabe} minHeight="md:min-h-[200px]" locale={locale} />
             );
           }
         } else if (cell === 'EMPTY') {
           return;
         } else {
           const palace = getPalaceByBranch(palaces, cell);
-          cells.push(
-            <PalaceCell key={`${rowIndex}-${colIndex}`} palace={palace} isCenter={false} astrolabe={astrolabe} minHeight="md:min-h-[200px]" />
+            cells.push(
+            <PalaceCell key={`${rowIndex}-${colIndex}`} palace={palace} isCenter={false} astrolabe={astrolabe} minHeight="md:min-h-[200px]" locale={locale} />
           );
         }
       });
@@ -138,7 +152,7 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
       {/* Header */}
       <header className="relative border-b border-[#B8925A]/15 py-6 px-8 bg-[#F7F3EC]/95 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-70 transition-opacity group">
+          <Link href={getLocalizedPath(locale)} className="flex items-center gap-3 hover:opacity-70 transition-opacity group">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
@@ -146,12 +160,15 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
               <TaiChiSymbol className="w-6 h-6 text-[#B8925A]" />
             </motion.div>
             <span className="text-[#1A0F05] tracking-[0.2em] text-sm font-serif">
-              天命玄机
+              {locale === 'zh' ? '天命玄机' : 'Tianming Secrets'}
             </span>
           </Link>
-          <span className="text-[#1A0F05]/40 text-xs">
-            排盘时间: {new Date(report.createdAt).toLocaleString('zh-CN')}
-          </span>
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher locale={locale} />
+            <span className="text-[#1A0F05]/40 text-xs">
+              {dictionary.generatedAt}: {new Date(report.createdAt).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US')}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -172,12 +189,12 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
             >
               <TaiChiSymbol className="w-12 h-12 text-[#B8925A] opacity-60" />
             </motion.div>
-            <p className="text-[#B8925A] tracking-[0.4em] text-xs mb-4">紫微斗數命盤</p>
+            <p className="text-[#B8925A] tracking-[0.4em] text-xs mb-4">{dictionary.chartTitle}</p>
             <h1 className="text-[#1A0F05] text-2xl md:text-3xl font-light tracking-wide mb-3">
               {report.email}
             </h1>
             <p className="text-[#1A0F05]/50 text-sm">
-              {report.birthDate} · {getShichenName(report.birthTime)}
+              {report.birthDate} · {getShichenName(report.birthTime, locale)}
             </p>
             <Divider />
           </div>
@@ -192,27 +209,27 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
             {/* 第一行：基本信息 */}
             <div className="grid grid-cols-3 md:grid-cols-6 border-b border-[#B8925A]/10">
               <div className="p-3 text-center border-r border-[#B8925A]/10">
-                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">性别</p>
-                <p className="text-[#1A0F05] font-medium text-sm">{astrolabe?.gender || (report.gender === 'male' ? '男' : '女')}</p>
+                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.gender}</p>
+                <p className="text-[#1A0F05] font-medium text-sm">{localizeGender(locale, astrolabe?.gender || report.gender)}</p>
               </div>
               <div className="p-3 text-center border-r border-[#B8925A]/10">
-                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">生肖</p>
-                <p className="text-[#1A0F05] font-medium text-sm">{astrolabe?.chineseZodiac || astrolabe?.zodiac || '-'}</p>
+                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.zodiac}</p>
+                <p className="text-[#1A0F05] font-medium text-sm">{localizeChineseZodiac(locale, astrolabe?.chineseZodiac || astrolabe?.zodiac || '-') || '-'}</p>
               </div>
               <div className="p-3 text-center border-r border-[#B8925A]/10">
-                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">星座</p>
-                <p className="text-[#1A0F05] font-medium text-sm">{getWesternZodiac(report.birthDate)}</p>
+                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.western}</p>
+                <p className="text-[#1A0F05] font-medium text-sm">{getWesternZodiac(report.birthDate, locale)}</p>
               </div>
               <div className="p-3 text-center border-r border-t md:border-t-0 border-[#B8925A]/10">
-                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">五行局</p>
+                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.elements}</p>
                 <p className="text-[#1A0F05] font-medium text-sm">{astrolabe?.fiveElementsClass || astrolabe?.fiveElementsClass || '-'}</p>
               </div>
               <div className="p-3 text-center border-r border-t md:border-t-0 border-[#B8925A]/10">
-                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">阳历</p>
+                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.solarDate}</p>
                 <p className="text-[#1A0F05] font-medium text-xs">{astrolabe?.solarDate || report.birthDate}</p>
               </div>
               <div className="p-3 text-center border-t md:border-t-0 border-[#B8925A]/10">
-                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">农历</p>
+                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.lunarDate}</p>
                 <p className="text-[#1A0F05] font-medium text-xs">{astrolabe?.lunarDate || '-'}</p>
               </div>
             </div>
@@ -220,23 +237,23 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
             {/* 第二行：命盘核心信息 */}
             <div className="grid grid-cols-4 border-b border-[#B8925A]/10 bg-[#F7F3EC]/30">
               <div className="p-3 text-center border-r border-[#B8925A]/10">
-                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">命宫主星</p>
+                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.lifePalace}</p>
                 <p className="text-[#8B0000] font-medium text-sm">{
-                  palaces.find(p => p.name === '命宫')?.majorStars?.map(s => s.name).join('·') || '空宫'
+                  palaces.find((p) => p.name === '命宫')?.majorStars?.map((s) => s.name).join('·') || (locale === 'zh' ? '空宫' : 'No major stars')
                 }</p>
               </div>
               <div className="p-3 text-center border-r border-[#B8925A]/10">
-                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">身宫主星</p>
+                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.bodyPalace}</p>
                 <p className="text-[#1A0F05] font-medium text-sm">{
-                  palaces.find(p => p.name === '身宫')?.majorStars?.map(s => s.name).join('·') || '空宫'
+                  palaces.find((p) => p.name === '身宫')?.majorStars?.map((s) => s.name).join('·') || (locale === 'zh' ? '空宫' : 'No major stars')
                 }</p>
               </div>
               <div className="p-3 text-center border-r border-[#B8925A]/10">
-                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">出生时辰</p>
-                <p className="text-[#1A0F05] font-medium text-sm">{getShichenName(report.birthTime)}</p>
+                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.shichen}</p>
+                <p className="text-[#1A0F05] font-medium text-sm">{getShichenName(report.birthTime, locale)}</p>
               </div>
               <div className="p-3 text-center">
-                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">四柱</p>
+                <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.pillars}</p>
                 <p className="text-[#1A0F05] font-medium text-sm font-serif">{siZhu.year} {siZhu.month} {siZhu.day} {siZhu.hour}</p>
               </div>
             </div>
@@ -256,7 +273,7 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
               </div>
               <div className="relative flex items-center justify-center gap-3">
                 <TaiChiSymbol className="w-5 h-5 text-[#B8925A]" />
-                <p className="text-[#B8925A] tracking-[0.3em] text-sm">紫微斗數排盤</p>
+                <p className="text-[#B8925A] tracking-[0.3em] text-sm">{dictionary.chartTitle}</p>
                 <TaiChiSymbol className="w-5 h-5 text-[#B8925A]" />
               </div>
             </div>
@@ -276,24 +293,24 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
           >
             <div className="flex flex-wrap justify-center gap-4 md:gap-6 text-xs text-[#1A0F05]/50">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-gradient-to-br from-[#8B0000]/10 to-[#8B0000]/5 text-[#8B0000] text-[10px] rounded">主星</span>
-                <span>红色</span>
+                <span className="px-2 py-0.5 bg-gradient-to-br from-[#8B0000]/10 to-[#8B0000]/5 text-[#8B0000] text-[10px] rounded">{dictionary.legendMain}</span>
+                <span>{locale === 'zh' ? '红色' : 'Red'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[#1A0F05]/70 text-[10px]">辅星</span>
-                <span>黑色</span>
+                <span className="text-[#1A0F05]/70 text-[10px]">{dictionary.legendMinor}</span>
+                <span>{locale === 'zh' ? '黑色' : 'Black'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[#1A0F05]/50 text-[9px]">杂耀</span>
-                <span>浅色</span>
+                <span className="text-[#1A0F05]/50 text-[9px]">{dictionary.legendAdj}</span>
+                <span>{locale === 'zh' ? '浅色' : 'Muted'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[#8B0000] text-[9px] font-medium">大限</span>
-                <span>右上角红色数字</span>
+                <span className="text-[#8B0000] text-[9px] font-medium">{dictionary.legendDecadal}</span>
+                <span>{locale === 'zh' ? '右上角红色数字' : 'Top-right red numbers'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[#B8925A] text-[8px]">长生/博士</span>
-                <span>底部12神</span>
+                <span className="text-[#B8925A] text-[8px]">{dictionary.legendSpirits}</span>
+                <span>{locale === 'zh' ? '底部神煞提示' : 'Lower symbolic markers'}</span>
               </div>
             </div>
           </motion.div>
@@ -312,24 +329,25 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
               <div className="relative">
                 <div className="flex items-center justify-center gap-2 mb-3">
                   <TaiChiSymbol className="w-4 h-4 text-[#8B4513]" />
-                  <p className="text-[#8B4513] text-xs tracking-[0.25em] font-medium">命理精解</p>
+                  <p className="text-[#8B4513] text-xs tracking-[0.25em] font-medium">{dictionary.ctaEyebrow}</p>
                   <TaiChiSymbol className="w-4 h-4 text-[#8B4513]" />
                 </div>
                 <p className="text-sm mb-3 text-[#1A0F05]/80 max-w-md mx-auto leading-relaxed">
-                  我们搭建了<span className="text-[#8B4513] font-medium">专属命理知识库</span>，汇聚<span className="text-[#8B4513] font-medium">30余位道教大师</span>毕生智慧
+                  {dictionary.ctaBody}
                 </p>
-                {/* 7天免费复用 + 数据保留说明 */}
                 <p className="text-[10px] mb-4 text-[#8B4513]/70 max-w-md mx-auto">
-                  同一邮箱、相同参数 7 天内免费复用 · 数据仅保留 7 天后自动删除
+                  {dictionary.ctaNote}
                 </p>
-                {/* 免费复用提示消息 */}
                 {freeReuseMessage && (
                   <p className="text-xs mb-4 text-[#8B4513] max-w-md mx-auto animate-pulse">
                     {freeReuseMessage}
                   </p>
                 )}
+                {actionError && (
+                  <p className="text-xs mb-4 text-red-700 max-w-md mx-auto">{actionError}</p>
+                )}
                 <button
-                  onClick={report.hasAIReport ? () => router.push(`/result/${report.id}`) : handleGetReading}
+                  onClick={report.hasAIReport ? () => router.push(getLocalizedPath(locale, `/result/${report.id}`)) : handleGetReading}
                   disabled={loading}
                   className="inline-flex items-center gap-2 text-xs tracking-[0.15em] px-8 py-3
                             bg-[#8B4513] text-[#F7F3EC] font-medium
@@ -345,18 +363,18 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
                       >
                         ☯
                       </motion.span>
-                      <span>正在处理...</span>
+                      <span>{dictionary.processing}</span>
                     </>
                   ) : report.hasAIReport ? (
                     <>
-                      <span>查看完整命盘</span>
+                      <span>{dictionary.openReading}</span>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                       </svg>
                     </>
                   ) : (
                     <>
-                      <span>获取大师解读</span>
+                      <span>{dictionary.getReading}</span>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                       </svg>
@@ -370,25 +388,25 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
           {/* Actions - 打印时隐藏 */}
           <div className="no-print mt-8 flex flex-col md:flex-row items-center justify-center gap-4">
             <Link
-              href="/"
+              href={getLocalizedPath(locale)}
               className="text-xs tracking-[0.15em] px-6 py-3 border border-[#B8925A] text-[#B8925A]
                          hover:bg-[#B8925A] hover:text-[#F7F3EC] transition-all duration-300"
             >
-              重新排盤
+              {dictionary.backHome}
             </Link>
             <button
               onClick={() => window.print()}
               className="text-xs tracking-[0.15em] px-6 py-3 border border-[#B8925A]/40 text-[#1A0F05]/50
                          hover:border-[#B8925A] hover:text-[#B8925A] transition-all duration-300"
             >
-              打印命盤
+              {dictionary.print}
             </button>
           </div>
 
           {/* Disclaimer - 打印时隐藏 */}
           <div className="no-print mt-10 pt-6 border-t border-[#B8925A]/10">
             <p className="text-center text-[#1A0F05]/25 text-xs tracking-wide leading-relaxed">
-              本命盘基于紫微斗数排盘算法生成，仅供参考。本网站不保留任何个人信息，数据仅储存7天后自动删除。
+              {dictionary.disclaimer}
             </p>
           </div>
         </motion.div>
@@ -399,10 +417,10 @@ export default function ChartDisplay({ report }: ChartDisplayProps) {
         <div className="max-w-6xl mx-auto flex flex-col items-center gap-3">
           <div className="flex items-center gap-3">
             <TaiChiSymbol className="w-4 h-4 text-[#B8925A] opacity-50" />
-            <span className="text-[#1A0F05]/30 text-xs tracking-[0.2em]">天命玄机</span>
+            <span className="text-[#1A0F05]/30 text-xs tracking-[0.2em]">{locale === 'zh' ? '天命玄机' : 'Tianming Secrets'}</span>
           </div>
           <p className="text-[#1A0F05]/20 text-xs tracking-wider">
-            © 2025 天命玄机 · Taoist Metaphysics
+            © 2025 {locale === 'zh' ? '天命玄机' : 'Tianming Secrets'} · Taoist Metaphysics
           </p>
         </div>
       </footer>

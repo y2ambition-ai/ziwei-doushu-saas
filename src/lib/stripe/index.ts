@@ -26,6 +26,8 @@ export interface CheckoutSessionInput {
   birthTime: number;
   birthMinute: number;
   birthCity: string;
+  reportId: string;
+  locale: string;
 }
 
 export interface CheckoutSessionOutput {
@@ -70,7 +72,14 @@ export async function createCheckoutSession(
     birthTime: String(input.birthTime),
     birthMinute: String(input.birthMinute),
     birthCity: input.birthCity,
+    reportId: input.reportId,
+    locale: input.locale,
   };
+
+  const localizedBase = `${baseUrl}/${input.locale}`;
+  const successParams = new URLSearchParams({
+    report_id: input.reportId,
+  });
 
   // Create checkout session
   const session = await stripe.checkout.sessions.create({
@@ -92,8 +101,8 @@ export async function createCheckoutSession(
       },
     ],
     mode: 'payment',
-    success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/?canceled=true`,
+    success_url: `${localizedBase}/success?session_id={CHECKOUT_SESSION_ID}&${successParams.toString()}`,
+    cancel_url: `${localizedBase}/chart/${input.reportId}?canceled=true`,
     metadata,
     expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
   });

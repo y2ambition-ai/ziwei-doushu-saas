@@ -16,6 +16,7 @@ export interface LLMConfig {
 export interface GenerateReportInput {
   email: string;
   gender: string;
+  locale?: 'en' | 'zh';
   country?: string; // ISO country code: CN, US, SG, MY, etc.
   birthDate: string;
   birthTime: number;
@@ -120,6 +121,27 @@ const SYSTEM_PROMPT = `你是紫微斗数专业分析师，精通斗数命理三
 
 总字数2000-3000字`;
 
+const ENGLISH_SYSTEM_PROMPT = `You are an expert Zi Wei Dou Shu analyst with decades of practice.
+
+Write for an international reader in natural English.
+
+Core rules:
+- Keep the tone professional, calm, and specific.
+- Explain each traditional term in plain English.
+- Avoid China-specific career, exam, or financial assumptions.
+- Use concrete Gregorian dates when mentioning timing.
+- Do not add word counts, disclaimers, hedging, or self-corrections.
+
+Structure the report into 6 sections:
+1. Core chart identity
+2. Main life directions
+3. Current major cycle
+4. Annual timing and key months
+5. Family, partnership, and health
+6. Lucky elements and practical guidance
+
+Write 1800-2600 words.`;
+
 
 // ─── User Prompt Template ──────────────────────────────────────────────────────
 
@@ -127,6 +149,7 @@ const SYSTEM_PROMPT = `你是紫微斗数专业分析师，精通斗数命理三
 import { formatAstrolabeForLLM } from '../ziwei/wrapper';
 
 function buildUserPrompt(input: GenerateReportInput): string {
+  const locale = input.locale || 'en';
   const shichenName = getShichenName(input.birthTime);
   const genderCn = input.gender === 'male' ? '男' : '女';
   const currentYear = new Date().getFullYear();
@@ -146,6 +169,49 @@ function buildUserPrompt(input: GenerateReportInput): string {
 
 ## 十二宫星曜
 ${formatPalaces(input.palaces)}`;
+  }
+
+  if (locale === 'en') {
+    const genderEn = input.gender === 'male' ? 'Male' : 'Female';
+    const halfYearEn = currentMonth <= 6 ? 'first half' : 'second half';
+
+    return `Please analyze this Zi Wei Dou Shu chart in English.
+
+## Basic profile
+- Gender: ${genderEn}
+- Birth date: ${input.birthDate}
+- Birth time block: ${shichenName}
+- Birthplace reference: ${input.birthCity}
+- Current timing context: ${currentYear}-${String(currentMonth).padStart(2, '0')} (${halfYearEn})
+
+## Four pillars
+- Year pillar: ${input.siZhu.year}
+- Month pillar: ${input.siZhu.month}
+- Day pillar: ${input.siZhu.day}
+- Hour pillar: ${input.siZhu.hour}
+
+## Chart highlights
+- Life palace stars: ${input.mingGong}
+- Five-element pattern: ${input.wuXingJu}
+- Chinese zodiac: ${input.chineseZodiac}
+- Western zodiac: ${input.zodiac}
+
+## Full chart data
+${astrolabeData}
+
+Write the report in 6 clear sections:
+1. Core chart identity
+2. Main life directions
+3. Current major cycle
+4. ${currentYear} timing and 2-3 important months with concrete dates
+5. Family, partnership, and health
+6. Lucky elements and practical guidance
+
+Writing requirements:
+- Explain each traditional concept in plain English.
+- Keep recommendations concrete and realistic.
+- Use modern global career and life language.
+- Do not add disclaimers or word counts.`;
   }
 
   return `请分析以下紫微斗数命盘：
@@ -239,6 +305,7 @@ export async function generateReport(
   const baseURL = config.baseURL || process.env.DOUBAO_BASE_URL || DEFAULT_BASE_URL;
 
   const userPrompt = buildUserPrompt(input);
+  const systemPrompt = input.locale === 'zh' ? SYSTEM_PROMPT : ENGLISH_SYSTEM_PROMPT;
 
   try {
     console.log('Calling LLM API with model:', model);
@@ -255,7 +322,7 @@ export async function generateReport(
       body: JSON.stringify({
         model,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
         max_tokens: 6144,
@@ -309,6 +376,51 @@ function getCurrentYear(): number {
 }
 
 export function generateMockReport(input: GenerateReportInput): GenerateReportOutput {
+  if ((input.locale || 'en') === 'en') {
+    const shichenName = getShichenName(input.birthTime);
+    const currentYear = getCurrentYear();
+    const coreIdentity = `Life palace ${input.mingGong}, ${input.wuXingJu}, born under ${input.siZhu.year} ${input.siZhu.month} ${input.siZhu.day} ${input.siZhu.hour}.`;
+
+    return {
+      coreIdentity,
+      report: `# Zi Wei Dou Shu Reading
+
+## Core Identity
+
+${coreIdentity}
+
+This chart centers on **${input.mingGong}** in the life palace, which suggests a life pattern shaped by self-direction, strong instincts, and a need to understand timing before making major moves.
+
+## Main Life Directions
+
+- **Career**: ${input.mingGong} in the life palace often favors roles that combine judgment, timing, and relationship management.
+- **Wealth**: ${input.wuXingJu} suggests steady accumulation works better than impulsive risk.
+- **Relationships**: The chart benefits from clarity, emotional pacing, and mature communication.
+
+## Current Major Cycle
+
+Your current cycle points toward transition rather than stagnation. This is a phase for restructuring priorities, refining professional positioning, and choosing higher-quality commitments.
+
+## ${currentYear} Timing
+
+- Focus on one career move in the next 90 days.
+- Watch for stronger momentum around late spring and early autumn.
+- Treat rushed decisions as a warning sign, not a green light.
+
+## Family, Partnership, and Health
+
+The chart does better with routine, sleep discipline, and selective social energy. In close relationships, transparency matters more than intensity.
+
+## Lucky Elements and Guidance
+
+- **Lucky colors**: gold, deep green, plum
+- **Lucky directions**: south, southeast
+- **Lucky numbers**: 1, 6, 8
+
+Use the chart as a timing framework: move deliberately, keep your commitments clean, and choose long-term alignment over short-term noise.`,
+    };
+  }
+
   const shichenName = getShichenName(input.birthTime);
   const genderCn = input.gender === 'male' ? '男' : '女';
   const currentYear = getCurrentYear(); // 动态获取当前年份

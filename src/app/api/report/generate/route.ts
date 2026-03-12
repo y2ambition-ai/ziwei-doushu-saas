@@ -14,6 +14,7 @@ import {
   GenerateReportInput,
 } from '@/lib/llm';
 import { prisma } from '@/lib/db';
+import { createTempReport } from '@/lib/temp-report-store';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -213,7 +214,22 @@ export async function POST(request: NextRequest) {
       });
       reportId = report.id;
     } catch (dbError) {
-      console.log('Database not available, using temporary ID');
+      createTempReport({
+        id: reportId,
+        email: body.email,
+        gender: body.gender,
+        country: body.country || 'OTHER',
+        birthDate: body.birthDate,
+        birthTime: body.birthTime,
+        birthMinute: body.birthMinute,
+        birthCity: `经度${longitude.toFixed(1)}°`,
+        longitude,
+        latitude: 0,
+        rawAstrolabe: JSON.stringify(astrolabe.raw),
+        aiReport: reportResult.report,
+        coreIdentity: reportResult.coreIdentity,
+      });
+      console.log('Database not available, using temporary report store');
     }
 
     // 8. 返回结果

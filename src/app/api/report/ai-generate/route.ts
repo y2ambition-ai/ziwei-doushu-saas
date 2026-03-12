@@ -13,20 +13,100 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateReport, generateMockReport } from '@/lib/llm';
 import { prisma } from '@/lib/db';
+import { normalizeLocale } from '@/lib/i18n/config';
 import { generateAstrolabe } from '@/lib/ziwei/wrapper';
 import { captureAIGenerationError, captureApiError } from '@/lib/monitoring';
+import { getTempReport, updateTempReport } from '@/lib/temp-report-store';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const RETRY_WINDOW_MS = 10 * 60 * 1000; // 10分钟重试窗口
 const MAX_RETRIES = 3; // 最大重试次数
 
+interface StoredReport {
+  id: string;
+  email: string;
+  gender: string;
+  birthDate: string;
+  birthTime: number;
+  birthCity: string;
+  longitude: number;
+  latitude: number;
+  coreIdentity: string | null;
+  aiReport: string | null;
+  apiCalledAt: Date | null;
+  apiRetryCount: number | null;
+  paidAt: Date | null;
+}
+
+interface StoredReportUpdate {
+  apiCalledAt?: Date;
+  apiRetryCount?: number;
+  aiReport?: string;
+  coreIdentity?: string;
+  completedAt?: Date;
+  paidAt?: Date;
+}
+
+async function getStoredReport(reportId: string): Promise<{
+  report: StoredReport | null;
+  useTempStore: boolean;
+}> {
+  const tempReport = getTempReport(reportId);
+
+  if (tempReport) {
+    return {
+      report: tempReport,
+      useTempStore: true,
+    };
+  }
+
+  try {
+    const report = await prisma.report.findUnique({
+      where: { id: reportId },
+    });
+
+    return {
+      report,
+      useTempStore: false,
+    };
+  } catch (error) {
+    console.warn(`Database lookup failed for AI report ${reportId}:`, error);
+    return {
+      report: null,
+      useTempStore: false,
+    };
+  }
+}
+
+async function updateStoredReport(
+  reportId: string,
+  data: StoredReportUpdate,
+  useTempStore: boolean
+) {
+  if (useTempStore) {
+    const updated = updateTempReport(reportId, data);
+
+    if (!updated) {
+      throw new Error(`Temporary report ${reportId} no longer exists`);
+    }
+
+    return updated;
+  }
+
+  return prisma.report.update({
+    where: { id: reportId },
+    data,
+  });
+}
+
 // ─── POST Handler ──────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { reportId } = body;
+    const { reportId, locale: requestedLocale } = body;
+    const locale = normalizeLocale(requestedLocale);
 
     if (!reportId) {
       return NextResponse.json(
@@ -36,14 +116,27 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. 获取报告数据
-    const report = await prisma.report.findUnique({
-      where: { id: reportId },
-    });
+    const { report, useTempStore } = await getStoredReport(reportId);
 
     if (!report) {
       return NextResponse.json(
         { error: '报告不存在' },
         { status: 404 }
+      );
+    }
+
+    const paymentConfigured = Boolean(
+      process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'sk_test_mock'
+    );
+
+    if (paymentConfigured && !report.paidAt) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: 'payment_required',
+          error: 'Payment confirmation is still pending',
+        },
+        { status: 403 }
       );
     }
 
@@ -88,13 +181,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 标记API调用开始（防止并发调用）
-    await prisma.report.update({
-      where: { id: reportId },
-      data: {
-        apiCalledAt: new Date(),
-        apiRetryCount: (report.apiRetryCount || 0) + 1,
-      },
-    });
+    await updateStoredReport(reportId, {
+      apiCalledAt: new Date(),
+      apiRetryCount: (report.apiRetryCount || 0) + 1,
+    }, useTempStore);
 
     // 5. 生成命盘数据
     const astrolabe = generateAstrolabe({
@@ -103,7 +193,7 @@ export async function POST(request: NextRequest) {
       birthMinute: 0,
       gender: report.gender as 'male' | 'female',
       longitude: report.longitude || 120,
-      latitude: 0,
+      latitude: report.latitude || 0,
       birthCity: report.birthCity || '',
     });
 
@@ -121,6 +211,7 @@ export async function POST(request: NextRequest) {
       siZhu: astrolabe.parsed.siZhu,
       palaces: astrolabe.parsed.palaces,
       rawAstrolabe: astrolabe.raw,
+      locale,
     };
 
     // 7. 调用API生成报告
@@ -144,15 +235,22 @@ export async function POST(request: NextRequest) {
     }
 
     // 8. 更新数据库
-    await prisma.report.update({
-      where: { id: reportId },
-      data: {
-        aiReport: reportResult.report,
-        coreIdentity: reportResult.coreIdentity,
-        paidAt: new Date(),
-        completedAt: new Date(),
-      },
-    });
+    const updateData: {
+      aiReport: string;
+      coreIdentity: string;
+      completedAt: Date;
+      paidAt?: Date;
+    } = {
+      aiReport: reportResult.report,
+      coreIdentity: reportResult.coreIdentity,
+      completedAt: new Date(),
+    };
+
+    if (!paymentConfigured && !report.paidAt) {
+      updateData.paidAt = new Date();
+    }
+
+    await updateStoredReport(reportId, updateData, useTempStore);
 
     // 9. 返回结果
     return NextResponse.json({

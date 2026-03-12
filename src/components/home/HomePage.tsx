@@ -241,24 +241,13 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
       <main className="pt-20">
         {/* Viewport 1: Hero */}
         <section className="relative flex min-h-[calc(100vh-80px)] flex-col items-center justify-center px-6 md:px-10 overflow-hidden">
-          {/* Subtle full-bleed bagua background */}
-          <div className="absolute inset-0 z-0 flex items-center justify-center opacity-10 pointer-events-none">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 120, repeat: Infinity, ease: 'linear' }}
-              className="w-[120vw] h-[120vw] max-w-[1200px] max-h-[1200px]"
-            >
-              <BaguaBackground className="w-full h-full" />
-            </motion.div>
-          </div>
-
           <div className="relative z-10 w-full max-w-[1000px] mx-auto grid md:grid-cols-2 gap-12 items-center">
             <div className="flex flex-col">
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`font-display text-[#1a0f05] leading-tight ${
-                  locale === 'zh' ? 'text-5xl md:text-6xl' : 'text-4xl md:text-5xl'
+                  locale === 'zh' ? 'text-4xl md:text-5xl' : 'text-3xl md:text-4xl'
                 }`}
               >
                 <span className="block mb-2 text-[#1a0f05]">{heroTitleLines[0]}</span>   

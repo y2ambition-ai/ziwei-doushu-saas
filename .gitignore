@@ -59,5 +59,19 @@ coverage/
 test-screenshot.png
 *.test.png
 
+# Local review artifacts
+scratch/
+.codex-dev.log
+.codex-dev.err.log
+en-*.png
+zh-*.png
+hero-*.png
+home-*.png
+review-*.png
+landing-*.png
+form-filled.png
+result-page.png
+screenshot-homepage.png
+
 # Vercel
 .vercel

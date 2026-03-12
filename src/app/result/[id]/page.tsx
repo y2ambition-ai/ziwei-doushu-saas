@@ -1,62 +1,16 @@
-/**
- * 报告结果页面
- * /result/[id]
- * 同时显示命盘和AI解读报告，方便打印
- */
+import { redirect } from 'next/navigation';
 
-import { notFound } from 'next/navigation';
-import { prisma } from '@/lib/db';
-import ReportContent from './ReportContent';
+import { defaultLocale } from '@/lib/i18n/config';
 
-// ─── Page Props ────────────────────────────────────────────────────────────────
-
-interface PageProps {
+interface LegacyResultPageProps {
   params: Promise<{ id: string }>;
 }
 
-// ─── Server Component ──────────────────────────────────────────────────────────
-
-export default async function ResultPage({ params }: PageProps) {
+export default async function LegacyResultPage({ params }: LegacyResultPageProps) {
   const { id } = await params;
-
-  const report = await prisma.report.findUnique({
-    where: { id },
-  });
-
-  if (!report) {
-    notFound();
-  }
-
-  // 解析原始命盘数据
-  let astrolabeData = null;
-  try {
-    astrolabeData = report.rawAstrolabe ? JSON.parse(report.rawAstrolabe) : null;
-  } catch (e) {
-    console.error('Failed to parse astrolabe data:', e);
-  }
-
-  return (
-    <ReportContent
-      report={{
-        id: report.id,
-        email: report.email,
-        gender: report.gender,
-        birthDate: report.birthDate,
-        birthTime: report.birthTime,
-        birthCity: report.birthCity,
-        longitude: report.longitude,
-        coreIdentity: report.coreIdentity || '',
-        aiReport: report.aiReport || '',
-        rawAstrolabe: astrolabeData,
-        createdAt: report.createdAt.toISOString(),
-      }}
-    />
-  );
+  redirect(`/${defaultLocale}/result/${id}`);
 }
 
-// ─── Generate Static Params ────────────────────────────────────────────────────
-
 export async function generateStaticParams() {
-  // Don't pre-render any pages - all dynamic
   return [];
 }

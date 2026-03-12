@@ -3,7 +3,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Link from 'next/link';
+
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import FullChart from '@/components/FullChart';
+import { Locale } from '@/lib/i18n/config';
+import { getDictionary } from '@/lib/i18n/dictionaries';
+import { getLocalizedPath } from '@/lib/i18n/routes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,11 +42,16 @@ interface ReportData {
   aiReport: string;
   rawAstrolabe: RawAstrolabe | null;
   createdAt: string;
+  isPaid?: boolean;
+  paymentEnabled?: boolean;
 }
 
 interface ReportContentProps {
+  locale: Locale;
   report: ReportData;
 }
+
+const pendingInitialGenerations = new Set<string>();
 
 // ─── Spring Animation Config ───────────────────────────────────────────────────
 
@@ -299,7 +309,7 @@ function renderMarkdown(text: string) {
 
 // ─── Loading Animation (Enhanced) ─────────────────────────────────────────────
 
-function LoadingAnimation() {
+function LoadingAnimation({ locale, title, body, hint }: { locale: Locale; title: string; body: string; hint: string }) {
   const [countdown, setCountdown] = useState(300);
   const [progress, setProgress] = useState(0);
 
@@ -333,11 +343,11 @@ function LoadingAnimation() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        AI 命理师正在解读
+        {title}
       </motion.p>
 
       <p className="text-[#1A0F05]/40 text-xs mb-6 max-w-xs mx-auto leading-relaxed">
-        正在结合您的命盘数据与千年道家智慧，生成专属解读报告...
+        {body}
       </p>
 
       {/* Progress bar */}
@@ -349,21 +359,21 @@ function LoadingAnimation() {
       </div>
 
       <p className="text-[#8B4513] text-sm font-medium mb-8">
-        预计剩余时间：{minutes}:{seconds.toString().padStart(2, '0')}
+        {locale === 'zh' ? '预计剩余时间：' : 'Estimated time remaining:'} {minutes}:{seconds.toString().padStart(2, '0')}
       </p>
 
       <div className="max-w-sm mx-auto p-5 bg-gradient-to-br from-[#B8925A]/5 to-transparent border border-[#B8925A]/15 rounded-xl">
         <p className="text-[#1A0F05]/60 text-xs leading-relaxed">
           <span className="text-[#B8925A] mr-1">💡</span>
-          <strong className="text-[#8B4513]">温馨提示：</strong>
-          使用相同邮箱和出生信息再次进入，<span className="text-[#B8925A] font-medium">7天内免费查看</span>，不会重复生成报告。
+          <strong className="text-[#8B4513]">{locale === 'zh' ? '温馨提示：' : 'Hint:'}</strong>
+          {hint}
         </p>
       </div>
     </div>
   );
 }
 
-function WaitingAnimation({ retryAfter }: { retryAfter: number }) {
+function WaitingAnimation({ locale, retryAfter, title, body, retryLabel }: { locale: Locale; retryAfter: number; title: string; body: string; retryLabel: string }) {
   const minutes = Math.floor(retryAfter / 60);
   const seconds = retryAfter % 60;
 
@@ -378,18 +388,20 @@ function WaitingAnimation({ retryAfter }: { retryAfter: number }) {
         <span className="relative text-4xl text-[#B8925A]/80">☯</span>
       </motion.div>
 
-      <p className="text-[#B8925A] tracking-[0.3em] text-sm mb-3">报告正在生成中</p>
-      <p className="text-[#1A0F05]/40 text-xs mb-6">请耐心等待，系统会自动完成...</p>
+      <p className="text-[#B8925A] tracking-[0.3em] text-sm mb-3">{title}</p>
+      <p className="text-[#1A0F05]/40 text-xs mb-6">{body}</p>
 
       <p className="text-[#8B4513] text-sm font-medium mb-8">
-        自动刷新倒计时：{minutes}:{seconds.toString().padStart(2, '0')}
+        {retryLabel}: {minutes}:{seconds.toString().padStart(2, '0')}
       </p>
 
       <div className="max-w-sm mx-auto p-5 bg-gradient-to-br from-[#B8925A]/5 to-transparent border border-[#B8925A]/15 rounded-xl">
         <p className="text-[#1A0F05]/60 text-xs leading-relaxed">
           <span className="text-[#B8925A] mr-1">💡</span>
-          <strong className="text-[#8B4513]">温馨提示：</strong>
-          使用相同邮箱和出生信息再次进入，<span className="text-[#B8925A] font-medium">7天内免费查看</span>。
+          <strong className="text-[#8B4513]">{locale === 'zh' ? '温馨提示：' : 'Hint:'}</strong>
+          {locale === 'zh'
+            ? '使用相同邮箱和出生信息再次进入，可在 7 天内继续查看。'
+            : 'Use the same email and birth details to revisit within 7 days.'}
         </p>
       </div>
     </div>
@@ -398,7 +410,9 @@ function WaitingAnimation({ retryAfter }: { retryAfter: number }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function ReportContent({ report }: ReportContentProps) {
+export default function ReportContent({ locale, report }: ReportContentProps) {
+  const dictionary = getDictionary(locale).result;
+  const chartDictionary = getDictionary(locale).chart;
   const [aiReport, setAiReport] = useState(report.aiReport);
 
   // 动态计算 coreIdentity（如果存储的是旧错误数据）
@@ -422,20 +436,37 @@ export default function ReportContent({ report }: ReportContentProps) {
       ? `${siZhuParts[0]}年${siZhuParts[1]}月${siZhuParts[2]}日${siZhuParts[3]}时`
       : '';
 
-    return `命宫${majorStars}坐守，${astrolabe.fiveElementsClass || ''}，四柱${siZhu}生。`;
+    if (locale === 'zh') {
+      return `命宫${majorStars}坐守，${astrolabe.fiveElementsClass || ''}，四柱${siZhu}生。`;
+    }
+
+    return `Life palace stars: ${majorStars}. Five-element pattern: ${astrolabe.fiveElementsClass || ''}. Four pillars: ${siZhu}.`;
   };
 
   const [coreIdentity, setCoreIdentity] = useState(computeCoreIdentity());
-  const [loading, setLoading] = useState(!report.aiReport || report.aiReport.length < 100);
+  const canGenerate = !report.paymentEnabled || report.isPaid || Boolean(report.aiReport && report.aiReport.length >= 100);
+  const [loading, setLoading] = useState(canGenerate && (!report.aiReport || report.aiReport.length < 100));
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [retryAfter, setRetryAfter] = useState(0);
+  const generationKey = `${locale}:${report.id}`;
 
   useEffect(() => {
-    if (!report.aiReport || report.aiReport.length < 100) {
-      generateAIReport();
+    if (!canGenerate || (report.aiReport && report.aiReport.length >= 100)) {
+      pendingInitialGenerations.delete(generationKey);
+      return;
     }
-  }, [report.id]);
+
+    if (pendingInitialGenerations.has(generationKey)) {
+      return;
+    }
+
+    pendingInitialGenerations.add(generationKey);
+
+    generateAIReport().finally(() => {
+      pendingInitialGenerations.delete(generationKey);
+    });
+  }, [canGenerate, generationKey, report.aiReport, report.id]);
 
   useEffect(() => {
     if (retryAfter > 0) {
@@ -457,7 +488,7 @@ export default function ReportContent({ report }: ReportContentProps) {
       const response = await fetch('/api/report/ai-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reportId: report.id }),
+        body: JSON.stringify({ reportId: report.id, locale }),
       });
 
       const data = await response.json();
@@ -470,19 +501,19 @@ export default function ReportContent({ report }: ReportContentProps) {
       }
 
       if (data.status === 'failed') {
-        setError(data.error || '报告生成失败');
+        setError(data.error || dictionary.retry);
         setLoading(false);
         return;
       }
 
       if (!response.ok) {
-        throw new Error(data.error || 'AI报告生成失败');
+        throw new Error(data.error || dictionary.retry);
       }
 
       setAiReport(data.report);
       setCoreIdentity(data.coreIdentity);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI报告生成失败');
+      setError(err instanceof Error ? err.message : dictionary.retry);
     } finally {
       setLoading(false);
     }
@@ -500,7 +531,7 @@ export default function ReportContent({ report }: ReportContentProps) {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-[#B8925A]/10 py-4 px-8 print:hidden bg-[#F7F3EC]/95 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <Link href="/" className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <Link href={getLocalizedPath(locale)} className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
             <motion.span
               className="text-[#B8925A] text-xl"
               whileHover={{ rotate: 180 }}
@@ -509,12 +540,15 @@ export default function ReportContent({ report }: ReportContentProps) {
               ☯
             </motion.span>
             <span className="text-[#1A0F05] tracking-[0.2em] text-sm font-serif">
-              天命玄机
+              {locale === 'zh' ? '天命玄机' : 'Tianming Secrets'}
             </span>
           </Link>
-          <span className="text-[#1A0F05]/35 text-[10px] tracking-wide">
-            {new Date(report.createdAt).toLocaleString('zh-CN')}
-          </span>
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher locale={locale} />
+            <span className="text-[#1A0F05]/35 text-[10px] tracking-wide">
+              {new Date(report.createdAt).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US')}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -539,13 +573,31 @@ export default function ReportContent({ report }: ReportContentProps) {
                 birthDate={report.birthDate}
                 birthTime={report.birthTime}
                 birthCity={report.birthCity}
+                locale={locale}
               />
             </motion.div>
           )}
 
           {/* Content Area */}
           <AnimatePresence mode="wait">
-            {isLoading ? (
+            {!canGenerate ? (
+              <motion.div
+                key="locked"
+                className="border border-[#B8925A]/15 p-8 md:p-12 bg-white/30 backdrop-blur-sm rounded-2xl print:hidden text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <p className="text-[#B8925A] tracking-[0.3em] text-sm mb-4">{dictionary.paymentRequiredTitle}</p>
+                <p className="text-[#1A0F05]/70 text-sm leading-7 max-w-xl mx-auto">{dictionary.paymentRequiredBody}</p>
+                <Link
+                  href={getLocalizedPath(locale, `/chart/${report.id}`)}
+                  className="mt-8 inline-flex items-center justify-center rounded-full border border-[#B8925A]/35 px-6 py-3 text-xs tracking-[0.2em] text-[#8B4513]"
+                >
+                  {dictionary.backToChart}
+                </Link>
+              </motion.div>
+            ) : isLoading ? (
               <motion.div
                 key="loading"
                 className="border border-[#B8925A]/15 p-8 md:p-12 bg-white/30 backdrop-blur-sm rounded-2xl print:hidden"
@@ -554,9 +606,20 @@ export default function ReportContent({ report }: ReportContentProps) {
                 exit={{ opacity: 0 }}
               >
                 {generating ? (
-                  <WaitingAnimation retryAfter={retryAfter} />
+                  <WaitingAnimation
+                    locale={locale}
+                    retryAfter={retryAfter}
+                    title={dictionary.waitingTitle}
+                    body={dictionary.waitingBody}
+                    retryLabel={dictionary.retryAfter}
+                  />
                 ) : (
-                  <LoadingAnimation />
+                  <LoadingAnimation
+                    locale={locale}
+                    title={dictionary.loadingTitle}
+                    body={dictionary.loadingBody}
+                    hint={dictionary.loadingHint}
+                  />
                 )}
               </motion.div>
             ) : error ? (
@@ -573,7 +636,7 @@ export default function ReportContent({ report }: ReportContentProps) {
                   className="text-xs tracking-widest px-8 py-3 border border-[#B8925A] text-[#B8925A]
                              hover:bg-[#B8925A] hover:text-[#F7F3EC] transition-all duration-300 rounded-lg"
                 >
-                  重试
+                  {dictionary.retry}
                 </button>
               </motion.div>
             ) : (
@@ -612,7 +675,7 @@ export default function ReportContent({ report }: ReportContentProps) {
                       >
                         ✧
                       </motion.span>
-                      <p className="text-[#B8925A] text-xs tracking-[0.35em] font-medium">CORE IDENTITY</p>
+                      <p className="text-[#B8925A] text-xs tracking-[0.35em] font-medium">{dictionary.coreIdentity.toUpperCase()}</p>
                       <motion.span
                         className="text-[#B8925A]/50 text-sm"
                         animate={{ scale: [1, 1.2, 1] }}
@@ -658,8 +721,8 @@ export default function ReportContent({ report }: ReportContentProps) {
                 >
                   <div className="inline-block px-8 py-4 bg-gradient-to-br from-[#B8925A]/5 to-transparent rounded-xl border border-[#B8925A]/10">
                     <p className="text-[#8B4513] text-sm tracking-wide leading-relaxed">
-                      "命由己造，相由心生。<br />
-                      <span className="text-[#8B4513]/70">知命者不怨天，知己者不怨人。"</span>
+                      {locale === 'zh' ? '"命由己造，相由心生。' : '"Read the pattern, then choose the response.'}<br />
+                      <span className="text-[#8B4513]/70">{dictionary.quote}"</span>
                     </p>
                   </div>
                 </motion.div>
@@ -670,12 +733,12 @@ export default function ReportContent({ report }: ReportContentProps) {
           {/* Actions */}
           <div className="mt-12 flex flex-col md:flex-row items-center justify-center gap-4 print:hidden">
             <Link
-              href="/"
+              href={getLocalizedPath(locale)}
               className="group flex items-center gap-2 text-xs tracking-widest px-8 py-3.5 border border-[#B8925A]/40 text-[#B8925A]
                          hover:bg-[#B8925A] hover:text-[#F7F3EC] hover:border-[#B8925A] transition-all duration-300 rounded-lg"
             >
               <span className="group-hover:-translate-x-1 transition-transform">←</span>
-              <span>重新推算</span>
+              <span>{dictionary.regenerate}</span>
             </Link>
             <button
               onClick={() => window.print()}
@@ -683,14 +746,14 @@ export default function ReportContent({ report }: ReportContentProps) {
                          hover:shadow-lg hover:shadow-[#B8925A]/20 transition-all duration-300 rounded-lg"
             >
               <span>📄</span>
-              <span>打印报告 / 保存PDF</span>
+              <span>{dictionary.print}</span>
             </button>
           </div>
 
           {/* Disclaimer */}
           <div className="mt-12 pt-8 border-t border-[#B8925A]/8">
             <p className="text-center text-[#1A0F05]/25 text-[10px] leading-relaxed tracking-wide max-w-lg mx-auto">
-              本报告基于紫微斗数命理分析，仅供参考。本网站不保留任何个人信息，数据仅储存7天后自动删除。
+              {dictionary.disclaimer}
             </p>
           </div>
         </motion.div>
@@ -701,7 +764,7 @@ export default function ReportContent({ report }: ReportContentProps) {
         <div className="max-w-5xl mx-auto text-center">
           <div className="flex items-center justify-center gap-3 mb-2">
             <span className="text-[#B8925A]/50 text-xs">✧</span>
-            <span className="text-[#1A0F05]/30 text-xs tracking-[0.2em]">天命玄机</span>
+            <span className="text-[#1A0F05]/30 text-xs tracking-[0.2em]">{locale === 'zh' ? '天命玄机' : 'Tianming Secrets'}</span>
             <span className="text-[#B8925A]/50 text-xs">✧</span>
           </div>
           <p className="text-[#1A0F05]/20 text-[10px] tracking-wider">

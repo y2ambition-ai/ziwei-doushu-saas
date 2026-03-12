@@ -5,6 +5,10 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
+
+import { Locale } from '@/lib/i18n/config';
+import { getDictionary } from '@/lib/i18n/dictionaries';
+import { localizeChineseZodiac, localizeGender } from '@/lib/i18n/chart';
 import {
   PalaceData,
   RawAstrolabe,
@@ -26,12 +30,14 @@ interface FullChartProps {
   birthDate?: string;
   birthTime?: number;
   birthCity?: string;
+  locale?: Locale;
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
-export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime }: FullChartProps) {
+export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime, locale = 'en' }: FullChartProps) {
   const palaces = rawAstrolabe?.palaces || [];
+  const dictionary = getDictionary(locale).chart;
 
   const renderGrid = () => {
     const cells: React.ReactNode[] = [];
@@ -41,7 +47,7 @@ export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime }
         if (cell === 'CENTER') {
           if (rowIndex === 1 && colIndex === 1) {
             cells.push(
-              <PalaceCell key="center" palace={null} isCenter astrolabe={rawAstrolabe} />
+              <PalaceCell key="center" palace={null} isCenter astrolabe={rawAstrolabe} locale={locale} />
             );
           }
         } else if (cell === 'EMPTY') {
@@ -49,7 +55,7 @@ export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime }
         } else {
           const palace = getPalaceByBranch(palaces, cell);
           cells.push(
-            <PalaceCell key={`${rowIndex}-${colIndex}`} palace={palace} isCenter={false} astrolabe={rawAstrolabe} />
+            <PalaceCell key={`${rowIndex}-${colIndex}`} palace={palace} isCenter={false} astrolabe={rawAstrolabe} locale={locale} />
           );
         }
       });
@@ -65,8 +71,8 @@ export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime }
     ? { year: siZhuParts[0], month: siZhuParts[1], day: siZhuParts[2], hour: siZhuParts[3] }
     : { year: '', month: '', day: '', hour: '' };
 
-  const displayGender = rawAstrolabe?.gender || (gender === 'male' ? '男' : '女');
-  const shichenName = birthTime !== undefined ? getShichenName(birthTime) : '';
+  const displayGender = localizeGender(locale, rawAstrolabe?.gender || gender);
+  const shichenName = birthTime !== undefined ? getShichenName(birthTime, locale) : '';
 
   return (
     <div className="w-full">
@@ -80,27 +86,27 @@ export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime }
         {/* 第一行：基本信息 */}
         <div className="grid grid-cols-3 md:grid-cols-6 border-b border-[#B8925A]/10">
           <div className="p-3 text-center border-r border-[#B8925A]/10">
-            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">性别</p>
+            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.gender}</p>
             <p className="text-[#1A0F05] font-medium text-sm">{displayGender}</p>
           </div>
           <div className="p-3 text-center border-r border-[#B8925A]/10">
-            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">生肖</p>
-            <p className="text-[#1A0F05] font-medium text-sm">{rawAstrolabe?.chineseZodiac || rawAstrolabe?.zodiac || '-'}</p>
+            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.zodiac}</p>
+            <p className="text-[#1A0F05] font-medium text-sm">{localizeChineseZodiac(locale, rawAstrolabe?.chineseZodiac || rawAstrolabe?.zodiac || '-') || '-'}</p>
           </div>
           <div className="p-3 text-center border-r border-[#B8925A]/10">
-            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">星座</p>
-            <p className="text-[#1A0F05] font-medium text-sm">{birthDate ? getWesternZodiac(birthDate) : '-'}</p>
+            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.western}</p>
+            <p className="text-[#1A0F05] font-medium text-sm">{birthDate ? getWesternZodiac(birthDate, locale) : '-'}</p>
           </div>
           <div className="p-3 text-center border-r border-t md:border-t-0 border-[#B8925A]/10">
-            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">五行局</p>
+            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.elements}</p>
             <p className="text-[#1A0F05] font-medium text-sm">{rawAstrolabe?.fiveElementsClass || '-'}</p>
           </div>
           <div className="p-3 text-center border-r border-t md:border-t-0 border-[#B8925A]/10">
-            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">阳历</p>
+            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.solarDate}</p>
             <p className="text-[#1A0F05] font-medium text-xs">{rawAstrolabe?.solarDate || birthDate}</p>
           </div>
           <div className="p-3 text-center border-t md:border-t-0 border-[#B8925A]/10">
-            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">农历</p>
+            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.lunarDate}</p>
             <p className="text-[#1A0F05] font-medium text-xs">{rawAstrolabe?.lunarDate || '-'}</p>
           </div>
         </div>
@@ -108,23 +114,23 @@ export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime }
         {/* 第二行：命盘核心信息 */}
         <div className="grid grid-cols-4 bg-[#F7F3EC]/30">
           <div className="p-3 text-center border-r border-[#B8925A]/10">
-            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">命宫主星</p>
+            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.lifePalace}</p>
             <p className="text-[#8B0000] font-medium text-sm">{
-              palaces.find(p => p.name === '命宫')?.majorStars?.map(s => s.name).join('·') || '空宫'
+              palaces.find((p) => p.name === '命宫')?.majorStars?.map((s) => s.name).join('·') || (locale === 'zh' ? '空宫' : 'No major stars')
             }</p>
           </div>
           <div className="p-3 text-center border-r border-[#B8925A]/10">
-            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">身宫主星</p>
+            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.bodyPalace}</p>
             <p className="text-[#1A0F05] font-medium text-sm">{
-              palaces.find(p => p.name === '身宫')?.majorStars?.map(s => s.name).join('·') || '空宫'
+              palaces.find((p) => p.name === '身宫')?.majorStars?.map((s) => s.name).join('·') || (locale === 'zh' ? '空宫' : 'No major stars')
             }</p>
           </div>
           <div className="p-3 text-center border-r border-[#B8925A]/10">
-            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">出生时辰</p>
+            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.shichen}</p>
             <p className="text-[#1A0F05] font-medium text-sm">{shichenName || '-'}</p>
           </div>
           <div className="p-3 text-center">
-            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">四柱</p>
+            <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.pillars}</p>
             <p className="text-[#1A0F05] font-medium text-sm font-serif">
               {siZhu.year} {siZhu.month} {siZhu.day} {siZhu.hour}
             </p>
@@ -146,7 +152,7 @@ export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime }
           </div>
           <div className="relative flex items-center justify-center gap-3">
             <TaiChiSymbol className="w-5 h-5 text-[#B8925A]" />
-            <p className="text-[#B8925A] tracking-[0.3em] text-sm">紫微斗數排盤</p>
+            <p className="text-[#B8925A] tracking-[0.3em] text-sm">{dictionary.chartTitle}</p>
             <TaiChiSymbol className="w-5 h-5 text-[#B8925A]" />
           </div>
         </div>
@@ -166,24 +172,24 @@ export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime }
       >
         <div className="flex flex-wrap justify-center gap-4 md:gap-6 text-xs text-[#1A0F05]/50">
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 bg-gradient-to-br from-[#8B0000]/10 to-[#8B0000]/5 text-[#8B0000] text-[10px] rounded">主星</span>
-            <span>红色</span>
+            <span className="px-2 py-0.5 bg-gradient-to-br from-[#8B0000]/10 to-[#8B0000]/5 text-[#8B0000] text-[10px] rounded">{dictionary.legendMain}</span>
+            <span>{locale === 'zh' ? '红色' : 'Red'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[#1A0F05]/70 text-[10px]">辅星</span>
-            <span>黑色</span>
+            <span className="text-[#1A0F05]/70 text-[10px]">{dictionary.legendMinor}</span>
+            <span>{locale === 'zh' ? '黑色' : 'Black'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[#1A0F05]/50 text-[9px]">杂耀</span>
-            <span>浅色</span>
+            <span className="text-[#1A0F05]/50 text-[9px]">{dictionary.legendAdj}</span>
+            <span>{locale === 'zh' ? '浅色' : 'Muted'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[#8B0000] text-[9px] font-medium">大限</span>
-            <span>右上角红色数字</span>
+            <span className="text-[#8B0000] text-[9px] font-medium">{dictionary.legendDecadal}</span>
+            <span>{locale === 'zh' ? '右上角红色数字' : 'Top-right red numbers'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[#B8925A] text-[8px]">长生/博士</span>
-            <span>底部12神</span>
+            <span className="text-[#B8925A] text-[8px]">{dictionary.legendSpirits}</span>
+            <span>{locale === 'zh' ? '底部神煞提示' : 'Lower symbolic markers'}</span>
           </div>
         </div>
       </motion.div>

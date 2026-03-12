@@ -1,18 +1,12 @@
-/**
- * Stripe Webhook Handler
- * POST /api/webhook
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+
+import { prisma } from '@/lib/db';
+import { normalizeLocale } from '@/lib/i18n/config';
+import { generateReport, generateMockReport, GenerateReportInput } from '@/lib/llm';
+import { captureApiError, capturePaymentError } from '@/lib/monitoring';
 import { verifyWebhookSignature } from '@/lib/stripe';
 import { generateAstrolabe } from '@/lib/ziwei/wrapper';
-import { generateReport, generateMockReport, GenerateReportInput } from '@/lib/llm';
-import { prisma } from '@/lib/db';
-import { getCityByName } from '@/lib/location/cities';
-import { capturePaymentError, captureApiError } from '@/lib/monitoring';
-
-// ─── POST Handler ──────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,56 +14,36 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('stripe-signature');
 
     if (!signature) {
-      return NextResponse.json(
-        { error: 'Missing stripe-signature header' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 });
     }
 
-    // Verify webhook signature
-    let event;
+    let event: Stripe.Event;
+
     try {
       event = verifyWebhookSignature(body, signature);
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err);
-      return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 400 }
-      );
+    } catch (error) {
+      console.error('Webhook signature verification failed:', error);
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
-    // Handle the event
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         await handleCheckoutCompleted(session);
         break;
       }
-
-      case 'payment_intent.succeeded': {
-        // Payment was successful
-        console.log('PaymentIntent succeeded:', event.data.object);
-        break;
-      }
-
       case 'payment_intent.payment_failed': {
-        // Payment failed - 上报到 Sentry
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        console.log('PaymentIntent failed:', paymentIntent);
-        capturePaymentError(
-          new Error('Payment failed'),
-          {
-            paymentIntentId: paymentIntent.id,
-            customerId: paymentIntent.customer as string | undefined,
-            amount: paymentIntent.amount,
-            currency: paymentIntent.currency,
-          }
-        );
+        capturePaymentError(new Error('Payment failed'), {
+          paymentIntentId: paymentIntent.id,
+          customerId: paymentIntent.customer as string | undefined,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency,
+        });
         break;
       }
-
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        break;
     }
 
     return NextResponse.json({ received: true });
@@ -79,88 +53,87 @@ export async function POST(request: NextRequest) {
       endpoint: '/api/webhook',
       method: 'POST',
     });
-    return NextResponse.json(
-      { error: 'Webhook handler failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
   }
 }
 
-// ─── Event Handlers ────────────────────────────────────────────────────────────
-
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const metadata = session.metadata;
-  const customerDetails = session.customer_details;
-  const customerEmail = customerDetails?.email;
-  const paymentIntentId = session.payment_intent as string | undefined;
+  const reportId = metadata?.reportId;
+  const locale = normalizeLocale(metadata?.locale);
 
-  if (!metadata) {
-    console.error('No metadata in checkout session');
+  if (!reportId) {
+    console.error('No reportId in checkout session metadata');
     return;
   }
 
-  const email = (metadata.email || customerEmail || '') as string;
-  const gender = (metadata.gender || 'male') as string;
-  const birthDate = (metadata.birthDate || '') as string;
-  const birthTime = parseInt((metadata.birthTime as string) || '12', 10);
-  const birthMinute = parseInt((metadata.birthMinute as string) || '0', 10);
-  const birthCity = (metadata.birthCity || '北京') as string;
-
-  // Get city coordinates
-  const city = getCityByName(birthCity);
-  if (!city) {
-    console.error(`City not found: ${birthCity}`);
-    return;
-  }
-
-  // Generate astrolabe
-  const astrolabe = generateAstrolabe({
-    birthDate,
-    birthTime,
-    birthMinute,
-    gender: gender as 'male' | 'female',
-    longitude: city.longitude,
-    latitude: city.latitude,
-    birthCity,
+  const existingReport = await prisma.report.findUnique({
+    where: { id: reportId },
   });
 
-  // Prepare LLM input
+  if (!existingReport) {
+    console.error(`Report not found for checkout session: ${reportId}`);
+    return;
+  }
+
+  const paidAt = existingReport.paidAt || new Date();
+
+  if (existingReport.aiReport && existingReport.aiReport.length > 100) {
+    await prisma.report.update({
+      where: { id: reportId },
+      data: {
+        paidAt,
+        completedAt: existingReport.completedAt || new Date(),
+      },
+    });
+    return;
+  }
+
+  const astrolabe = generateAstrolabe({
+    birthDate: existingReport.birthDate,
+    birthTime: existingReport.birthTime,
+    birthMinute: existingReport.birthMinute,
+    gender: existingReport.gender as 'male' | 'female',
+    longitude: existingReport.longitude || 120,
+    latitude: existingReport.latitude || 0,
+    birthCity: existingReport.birthCity || '',
+  });
+
+  await prisma.report.update({
+    where: { id: reportId },
+    data: {
+      paidAt,
+      rawAstrolabe: existingReport.rawAstrolabe || JSON.stringify(astrolabe.raw),
+    },
+  });
+
   const llmInput: GenerateReportInput = {
-    email: email || '',
-    gender: gender || 'male',
-    birthDate: birthDate || '',
+    email: existingReport.email,
+    gender: existingReport.gender,
+    birthDate: existingReport.birthDate,
     birthTime: astrolabe.parsed.solarTime.shichen,
-    birthCity: birthCity || '',
+    birthCity: existingReport.birthCity || '',
     mingGong: astrolabe.parsed.mingGong.majorStars.join('·') || '空宫',
     wuXingJu: astrolabe.parsed.wuXingJu,
     chineseZodiac: astrolabe.parsed.chineseZodiac,
     zodiac: astrolabe.parsed.zodiac,
     siZhu: astrolabe.parsed.siZhu,
     palaces: astrolabe.parsed.palaces,
+    rawAstrolabe: astrolabe.raw,
+    locale,
   };
 
-  // Generate report
-  const hasApiKey = process.env.DOUBAO_API_KEY && process.env.DOUBAO_API_KEY.length > 0;
-  const reportResult = hasApiKey
-    ? await generateReport(llmInput)
-    : generateMockReport(llmInput);
+  const hasApiKey = Boolean(process.env.DOUBAO_API_KEY && process.env.DOUBAO_API_KEY.length > 0);
+  const reportResult = hasApiKey ? await generateReport(llmInput) : generateMockReport(llmInput);
 
-  // Store in database
-  await prisma.report.create({
+  await prisma.report.update({
+    where: { id: reportId },
     data: {
-      email: email || '',
-      gender: gender || 'male',
-      birthDate: birthDate || '',
-      birthTime: birthTime || 12,
-      birthMinute: birthMinute || 0,
-      birthCity: birthCity || '',
-      longitude: city.longitude,
-      latitude: city.latitude,
-      rawAstrolabe: JSON.stringify(astrolabe.raw),
-      aiReport: reportResult.report,
       coreIdentity: reportResult.coreIdentity,
+      aiReport: reportResult.report,
+      paidAt,
+      completedAt: new Date(),
+      rawAstrolabe: existingReport.rawAstrolabe || JSON.stringify(astrolabe.raw),
     },
   });
-
-  console.log(`Report generated for ${email}, payment: ${paymentIntentId}`);
 }

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { getReportViewData } from '@/lib/report-view';
 
 export async function GET(
   request: NextRequest,
@@ -13,9 +13,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const report = await prisma.report.findUnique({
-      where: { id },
-    });
+    const report = await getReportViewData(id);
 
     if (!report) {
       return NextResponse.json(
@@ -36,11 +34,12 @@ export async function GET(
         coreIdentity: report.coreIdentity,
         aiReport: report.aiReport,
         createdAt: report.createdAt,
+        paidAt: report.paidAt,
+        completedAt: report.completedAt,
       },
     }, {
       headers: {
-        // 缓存 1 小时，报告数据不会变化
-        'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+        'Cache-Control': 'no-store',
       },
     });
   } catch (error) {

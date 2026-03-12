@@ -12,6 +12,7 @@ import {
   createMockCheckoutSession,
 } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
+import { normalizeLocale } from '@/lib/i18n/config';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ interface CheckoutRequest {
   birthMinute: number;
   birthCity: string;
   reportId: string; // 当前报告ID
+  locale?: string;
 }
 
 // ─── Helper: Check 7-day free reuse ───────────────────────────────────────────
@@ -88,6 +90,7 @@ async function getValidPaidReport(body: CheckoutRequest): Promise<{
 export async function POST(request: NextRequest) {
   try {
     const body: CheckoutRequest = await request.json();
+    const locale = normalizeLocale(body.locale);
 
     // Validate input
     if (!body.email || !body.gender || !body.birthDate || !body.birthCity) {
@@ -118,9 +121,14 @@ export async function POST(request: NextRequest) {
       process.env.STRIPE_SECRET_KEY !== 'sk_test_mock';
 
     // Create checkout session
+    const checkoutInput = {
+      ...body,
+      locale,
+    };
+
     const result = hasStripeKey
-      ? await createCheckoutSession(body)
-      : createMockCheckoutSession(body);
+      ? await createCheckoutSession(checkoutInput)
+      : createMockCheckoutSession(checkoutInput);
 
     return NextResponse.json({
       success: true,
