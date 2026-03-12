@@ -51,7 +51,8 @@
 ## 本地无库兜底
 
 - 当 `DATABASE_URL` 缺失、无效或 Prisma 不可用时，部分本地预览链路会退化到 `src/lib/temp-report-store.ts`
-- 临时数据写入 `.next/cache/temp-reports.json`
+- 本地临时数据写入 `.local/temp-reports.json`
+- Vercel 运行时自动改用系统临时目录，避免把 `.next/cache` 构建缓存打进 Serverless Functions
 - 该兜底主要服务于本地预览和联调，不替代真实数据库、支付或 webhook 持久化
 
 ## 关键文件

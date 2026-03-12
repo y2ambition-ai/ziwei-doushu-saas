@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 
 interface TempReportRecord {
@@ -52,7 +53,22 @@ const globalForTempReports = globalThis as unknown as {
 };
 
 const tempReports = globalForTempReports.tempReports ?? new Map<string, TempReportRecord>();
-const tempReportsFile = join(process.cwd(), '.next', 'cache', 'temp-reports.json');
+
+function resolveTempReportsFile() {
+  const overridePath = process.env.TEMP_REPORTS_FILE?.trim();
+
+  if (overridePath) {
+    return overridePath;
+  }
+
+  if (process.env.VERCEL) {
+    return join(tmpdir(), 'tianming-secrets', 'temp-reports.json');
+  }
+
+  return join(process.cwd(), '.local', 'temp-reports.json');
+}
+
+const tempReportsFile = resolveTempReportsFile();
 
 if (!globalForTempReports.tempReports) {
   globalForTempReports.tempReports = tempReports;

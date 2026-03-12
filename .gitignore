@@ -24,6 +24,7 @@ prisma/*.db-journal
 .env.development.local
 .env.test.local
 .env.production.local
+.local/
 
 # IDE
 .vscode/

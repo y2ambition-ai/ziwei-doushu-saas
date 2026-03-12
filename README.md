@@ -69,7 +69,8 @@ pnpm dev
 
 ## 本地预览说明
 
-- 如果 `DATABASE_URL` 缺失、无效或本地数据库不可用，部分链路会退化到 `.next/cache/temp-reports.json`
+- 如果 `DATABASE_URL` 缺失、无效或本地数据库不可用，部分链路会退化到本地临时文件 `.local/temp-reports.json`
+- Vercel 运行时会自动改用系统临时目录，避免把 `.next/cache` 构建缓存打进 Serverless Functions
 - 该兜底主要用于本地预览和联调，不替代真实的数据库、支付和 webhook 数据
 - 真实支付联调仍建议完整配置 `DATABASE_URL`、`STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`
 
