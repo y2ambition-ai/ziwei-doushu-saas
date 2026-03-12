@@ -457,7 +457,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
 
       </main>
 
-      <footer className="border-t border-[#b8925a]/10 bg-[#1a0f05] px-6 py-12 md:px-10 text-[#f8f2e8]">        <div className="mx-auto flex max-w-[1200px] flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <footer className="border-t border-[#b8925a]/10 bg-transparent px-6 py-12 md:px-10 text-[#1a0f05]">        <div className="mx-auto flex max-w-[1200px] flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="font-display text-xl tracking-[0.14em] text-[#1a0f05]">{dictionary.brand.name}</p>
             <p className="mt-2 text-sm leading-7 text-[#5f472b]">{home.footer.line}</p>
