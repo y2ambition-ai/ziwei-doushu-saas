@@ -312,30 +312,30 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
         </section>
 
         {/* Viewport 2: Form */}
-        <section id="reading" className="relative flex min-h-screen flex-col justify-center bg-[#1a0f05] px-6 py-20 md:px-10">
+        <section id="reading" className="relative flex min-h-screen flex-col justify-center px-6 py-20 md:px-10">
           <div className="mx-auto grid w-full max-w-[1200px] gap-12 lg:grid-cols-[1fr_1.2fr] items-center">
 
             {/* Left Info Panel */}
-            <div className="text-[#f7f0e7] max-w-md">
-              <p className="text-[11px] uppercase tracking-[0.4em] text-[#d3a96d] mb-4">{home.formEyebrow}</p>
+            <div className="text-[#1a0f05] max-w-md">
+              <p className="text-[11px] uppercase tracking-[0.4em] text-[#b8925a] mb-4">{home.formEyebrow}</p>
               <h2 className="font-display text-4xl leading-tight md:text-5xl">{home.formTitle}</h2> 
-              <p className="mt-6 text-base leading-relaxed text-[#f8f2e8]/70">{home.formDescription}</p>       
+              <p className="mt-6 text-base leading-relaxed text-[#5c5246]">{home.formDescription}</p>       
 
               <div className="mt-12 space-y-6">
-                <div className="border-l-2 border-[#d3a96d] pl-6">
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-[#d3a96d] mb-2">{dictionary.chart.ctaEyebrow}</p>
-                  <p className="font-display text-2xl leading-tight mb-3">{dictionary.chart.ctaTitle}</p>
-                  <p className="text-sm leading-relaxed text-[#f8f2e8]/70">{dictionary.chart.ctaBody}</p> 
+                <div className="border-l-2 border-[#b8925a]/40 pl-6">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-[#b8925a] mb-2">{dictionary.chart.ctaEyebrow}</p>
+                  <p className="font-display text-2xl leading-tight mb-3 text-[#1a0f05]">{dictionary.chart.ctaTitle}</p>
+                  <p className="text-sm leading-relaxed text-[#6d5437]">{dictionary.chart.ctaBody}</p> 
                 </div>
-                <div className="rounded-xl bg-white/5 p-6 border border-white/10">
-                  <p className="text-sm leading-relaxed text-[#f8f2e8]/80">{dictionary.chart.paymentSecurity}</p>
-                  <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-[#d3a96d]/80">{dictionary.chart.ctaNote}</p>
+                <div className="rounded-xl bg-white/40 backdrop-blur-sm p-6 border border-[#b8925a]/10">
+                  <p className="text-sm leading-relaxed text-[#1a0f05]/90">{dictionary.chart.paymentSecurity}</p>
+                  <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-[#b8925a]">{dictionary.chart.ctaNote}</p>
                 </div>
               </div>
             </div>
 
             {/* Right Form Panel */}
-            <form onSubmit={handleSubmit} className="w-full rounded-[32px] bg-[#f7f0e7] p-8 md:p-12 shadow-2xl">
+            <form onSubmit={handleSubmit} className="w-full rounded-[32px] bg-white/60 backdrop-blur-xl p-8 md:p-12 shadow-[0_20px_60px_rgba(184,146,90,0.08)] border border-[#b8925a]/10">
               <div className="grid gap-6">
                 <div className="grid gap-6 md:grid-cols-2">
                   <div className="space-y-2">
