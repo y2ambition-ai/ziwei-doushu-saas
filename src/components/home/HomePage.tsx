@@ -241,7 +241,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
       <main className="pt-20">
         {/* Viewport 1: Hero */}
         <section className="relative flex min-h-[calc(100vh-80px)] flex-col items-center justify-center px-6 md:px-10 overflow-hidden">
-          <div className="relative z-10 w-full max-w-[1000px] mx-auto grid md:grid-cols-2 gap-12 items-center">
+          <div className="relative z-10 w-full max-w-[1200px] mx-auto grid lg:grid-cols-[1fr_1.2fr] gap-12 items-center">
             <div className="flex flex-col justify-center">
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
