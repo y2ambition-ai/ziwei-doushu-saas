@@ -13,6 +13,8 @@ import {
 } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { normalizeLocale } from '@/lib/i18n/config';
+import { resolveStoredReportLocale, setStoredReportLocale } from '@/lib/report-preferences';
+import { getTempReport, updateTempReport } from '@/lib/temp-report-store';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -37,7 +39,7 @@ interface CheckoutRequest {
  * 检查是否有7天内已生成AI报告的相同参数报告
  * 注意：只是查找已有结果，不会重新调用API或发邮件
  */
-async function getValidPaidReport(body: CheckoutRequest): Promise<{
+async function getValidPaidReport(body: CheckoutRequest, locale: 'en' | 'zh'): Promise<{
   found: boolean;
   reportId?: string;
   aiReport?: string;
@@ -47,7 +49,7 @@ async function getValidPaidReport(body: CheckoutRequest): Promise<{
   try {
     const validTime = new Date(Date.now() - FREE_REUSE_DAYS * 24 * 60 * 60 * 1000);
 
-    const paidReport = await prisma.report.findFirst({
+    const paidReports = await prisma.report.findMany({
       where: {
         email: body.email,
         birthDate: body.birthDate,
@@ -63,7 +65,14 @@ async function getValidPaidReport(body: CheckoutRequest): Promise<{
       orderBy: {
         paidAt: 'desc',
       },
+      take: 10,
     });
+
+    const paidReport = paidReports.find(
+      (report) =>
+        Boolean(report.paidAt && report.aiReport) &&
+        resolveStoredReportLocale(report, locale) === locale
+    );
 
     if (paidReport && paidReport.paidAt && paidReport.aiReport) {
       const daysRemaining = Math.ceil(
@@ -90,7 +99,7 @@ async function getValidPaidReport(body: CheckoutRequest): Promise<{
 export async function POST(request: NextRequest) {
   try {
     const body: CheckoutRequest = await request.json();
-    const locale = normalizeLocale(body.locale);
+    const requestedLocale = normalizeLocale(body.locale);
 
     // Validate input
     if (!body.email || !body.gender || !body.birthDate || !body.birthCity) {
@@ -100,13 +109,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const tempReport = getTempReport(body.reportId);
+    const currentReport = tempReport || await prisma.report.findUnique({
+      where: { id: body.reportId },
+    });
+
+    if (!currentReport) {
+      return NextResponse.json(
+        { error: '报告不存在' },
+        { status: 404 }
+      );
+    }
+
+    const locale = resolveStoredReportLocale(currentReport, requestedLocale);
+    const parsedData = setStoredReportLocale(currentReport.parsedData, locale);
+
+    if (tempReport) {
+      updateTempReport(body.reportId, { parsedData });
+    } else if (currentReport.parsedData !== parsedData) {
+      await prisma.report.update({
+        where: { id: body.reportId },
+        data: { parsedData },
+      });
+    }
+
     // 1. 检查7天内是否有相同参数的已有AI报告（免费复用，不发邮件）
-    const validPaid = await getValidPaidReport(body);
+    const validPaid = await getValidPaidReport(body, locale);
     if (validPaid.found && validPaid.reportId) {
       console.log('Found valid paid report for:', body.email, 'days remaining:', validPaid.daysRemaining);
       return NextResponse.json({
         success: true,
         freeReuse: true,
+        locale,
         reportId: validPaid.reportId,
         aiReport: validPaid.aiReport,
         coreIdentity: validPaid.coreIdentity,
@@ -132,6 +166,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      locale,
       requiresPayment: true,
       sessionId: result.sessionId,
       url: result.url,

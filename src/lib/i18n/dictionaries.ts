@@ -181,16 +181,16 @@ const dictionaries = {
     },
     nav: {
       story: '为何值得信任',
-      form: '领取命盘',
+      form: '开启命盘',
       switchLabel: '语言',
     },
     home: {
       heroEyebrow: '融汇道家传承智慧的高端紫微命理解读',
-      heroTitle: '这不只是一张命盘，',
-      heroTitleAccent: '更是一份看清人生转机的东方指引。',
+      heroTitle: '这张命盘，',
+      heroTitleAccent: '是看清人生转机的东方指引。',
       heroDescription:
         '汇集三十余位道家传承老师的判断经验与古籍脉络，这份解读会先呈现你的完整紫微命盘，再帮助你看清人生方向、感情缘分、事业起伏与关键抉择背后的节奏。',
-      primaryCta: '免费领取命盘',
+      primaryCta: '查看我的命盘',
       secondaryCta: '看看为什么值得信任',
       proofTitle: '这份解读为什么值得信任',
       proofItems: [
@@ -224,7 +224,7 @@ const dictionaries = {
         '深度报告不会只重复盘面表层信息，而是把宫位结构、星曜关系与时运起伏串联起来，帮你读懂事业走向、感情课题、关键转折与接下来该顺势而为的方向。',
       premiumItems: ['事业、关系、时运与关键阶段一并解读', '同邮箱同参数 7 天内可重复查看', '支持中文与英文完整报告'],
       premiumNote: '先看盘，再决定是否深入，整个体验会更安心，也更有判断依据。',
-      formEyebrow: '领取命盘',
+      formEyebrow: '出生信息',
       formTitle: '输入信息，领取你的专属紫微命盘',
       formDescription:
         '几项基础信息就能生成你的命盘并准备后续解读。出生地时间越准确，命盘时运校准也会更可靠。',

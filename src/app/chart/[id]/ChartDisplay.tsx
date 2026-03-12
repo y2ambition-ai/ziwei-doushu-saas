@@ -28,6 +28,7 @@ import { localizeChineseZodiac, localizeGender } from '@/lib/i18n/chart';
 
 interface ReportData {
   id: string;
+  locale: Locale;
   email: string;
   gender: string;
   birthDate: string;
@@ -72,7 +73,7 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
           birthMinute: 0,
           birthCity: report.birthCity,
           reportId: report.id,
-          locale,
+          locale: report.locale,
         }),
       });
 
@@ -82,15 +83,20 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
         throw new Error(data.error || dictionary.paymentError);
       }
 
+      console.log('Checkout response:', data);
+
       if (data.freeReuse && data.reportId) {
         setFreeReuseMessage(`${dictionary.freeReusePrefix}${data.daysRemaining}${dictionary.freeReuseSuffix}`);
         setTimeout(() => {
-          router.push(getLocalizedPath(locale, `/result/${data.reportId}`));
+          router.push(getLocalizedPath(report.locale, `/result/${data.reportId}`));
         }, 1500);
       } else if (data.url) {
         window.location.href = data.url;
-      } else if (data.isMock) {
-        router.push(getLocalizedPath(locale, `/result/${report.id}`));
+      } else if (data.isMock || data.success) {
+        // Failsafe for mock flow or any direct success
+        router.push(getLocalizedPath(report.locale, `/result/${report.id}`));
+      } else {
+        throw new Error(dictionary.paymentError);
       }
     } catch (error) {
       console.error('Checkout error:', error);
@@ -164,7 +170,7 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
             </span>
           </Link>
           <div className="flex items-center gap-3">
-            <LanguageSwitcher locale={locale} />
+            <LanguageSwitcher locale={locale} locked />
             <span className="text-[#1A0F05]/40 text-xs">
               {dictionary.generatedAt}: {new Date(report.createdAt).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US')}
             </span>

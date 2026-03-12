@@ -62,7 +62,7 @@ function HeroSigilStage({
   locale: Locale;
 }) {
   return (
-    <div className="mx-auto w-full max-w-[440px] md:max-w-[500px]">
+    <div className="w-full">
       <div className="paper-panel relative aspect-square w-full overflow-hidden rounded-[28px] p-6 md:p-7">
         <motion.div
           aria-hidden="true"
@@ -120,8 +120,8 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
   const home = dictionary.home;
   const heroTitleLines =
     locale === 'zh'
-      ? ['这不只是一张命盘，', '更是一份看清人生转机的东方指引。']
-      : ['More than a chart,', 'an Eastern reading for life turning points.'];
+      ? ['这张命盘，是看清人生转机的方向。']
+      : ['This chart is your Eastern guide', 'to life turning points.'];
   const heroHighlights =
     locale === 'zh'
       ? ['30+ 道家传承脉络', '完整十二宫命盘', '7 天内可重复查看']
@@ -200,6 +200,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
           birthMinute: 0,
           currentHour: parseInt(form.currentHour, 10),
           currentMinute: parseInt(form.currentMinute || '0', 10),
+          locale,
         }),
       });
 
@@ -241,24 +242,23 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
       <main className="pt-20">
         {/* Viewport 1: Hero */}
         <section className="relative flex min-h-[calc(100vh-80px)] flex-col items-center justify-center px-6 md:px-10 overflow-hidden">
-          <div className="relative z-10 w-full max-w-[1200px] mx-auto grid lg:grid-cols-[1fr_1.2fr] gap-12 items-center">
-            <div className="flex flex-col justify-center">
+          <div className="relative z-10 w-full max-w-[1200px] mx-auto grid lg:grid-cols-[1fr_1.4fr] gap-12 items-center">
+            <div className="flex flex-col justify-center max-w-3xl">
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`font-display text-[#1a0f05] leading-snug ${
-                  locale === 'zh' ? 'text-3xl md:text-4xl' : 'text-2xl md:text-3xl'
+                  locale === 'zh' ? 'text-2xl md:text-3xl' : 'text-2xl md:text-3xl'
                 }`}
               >
-                <span className="block mb-3 text-[#1a0f05]">{heroTitleLines[0]}</span>
-                <span className="block text-[#b8925a]">{heroTitleLines[1]}</span>
+                <span className="block text-[#1a0f05]">{heroTitleLines[0]}</span>
               </motion.h1>
 
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="mt-6 text-base leading-relaxed text-[#4d3923]/90 md:text-lg max-w-md"
+                className="mt-8 text-base leading-relaxed text-[#4d3923]/90 md:text-lg max-w-3xl"
               >
                 {home.heroDescription}
               </motion.p>
@@ -267,26 +267,26 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="mt-16 flex flex-col gap-8"
+                className="mt-16 flex flex-col gap-10"
               >
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-3 text-sm font-bold tracking-[0.1em] text-[#1a0f05]">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3 text-2xl font-bold tracking-[0.1em] text-[#1a0f05]">
                     <span className="text-[#b8925a]">✦</span>
                     {locale === 'zh' ? '30+ 道家传承脉络' : '30+ lineage source notes'}
                   </div>
-                  <p className="text-sm text-[#6d5437] pl-6">
+                  <p className="text-xl text-[#6d5437] pl-8 max-w-3xl leading-relaxed">
                     {locale === 'zh' 
                       ? '汇集三十余位道家传承老师的判断经验与古籍脉络，摒弃泛泛而谈的性格套话。' 
                       : 'Distilled from over 30 Taoist lineage teachers and classical source notes.'}
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-3 text-sm font-bold tracking-[0.1em] text-[#1a0f05]">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3 text-2xl font-bold tracking-[0.1em] text-[#1a0f05]">
                     <span className="text-[#b8925a]">✦</span>
                     {locale === 'zh' ? '完整十二宫命盘' : 'Full twelve-palace chart'}
                   </div>
-                  <p className="text-sm text-[#6d5437] pl-6">
+                  <p className="text-xl text-[#6d5437] pl-8 max-w-3xl leading-relaxed">
                     {locale === 'zh'
                       ? '系统呈现完整的紫微斗数排盘，让你先看清格局与主星落点，再深入探索关键转折。'
                       : 'We render the complete structural layout of your chart before any deep-dive readings.'}
@@ -302,10 +302,10 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
         </section>
         {/* Viewport 2: Form */}
         <section id="reading" className="relative flex min-h-screen flex-col justify-center px-6 py-20 md:px-10">
-          <div className="mx-auto grid w-full max-w-[1200px] gap-12 lg:grid-cols-[1fr_1.2fr] items-center">
+          <div className="mx-auto grid w-full max-w-[1200px] gap-12 lg:grid-cols-[1fr_1.4fr] items-center">
 
             {/* Left Info Panel */}
-            <div className="text-[#1a0f05] max-w-md">
+            <div className="text-[#1a0f05] max-w-3xl">
               <p className="text-[11px] uppercase tracking-[0.4em] text-[#b8925a] mb-4">{home.formEyebrow}</p>
               <h2 className="font-display text-4xl leading-tight md:text-5xl">{home.formTitle}</h2> 
               <p className="mt-6 text-base leading-relaxed text-[#5c5246]">{home.formDescription}</p>       
@@ -313,7 +313,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
               <div className="mt-12 space-y-6">
                 <div className="border-l-2 border-[#b8925a]/40 pl-6">
                   <p className="text-[10px] uppercase tracking-[0.3em] text-[#b8925a] mb-2">{dictionary.chart.ctaEyebrow}</p>
-                  <p className="font-display text-2xl leading-tight mb-3 text-[#1a0f05]">{dictionary.chart.ctaTitle}</p>
+                  <p className="font-display text-2xl leading-tight mb-4 text-[#1a0f05]">{dictionary.chart.ctaTitle}</p>
                   <p className="text-sm leading-relaxed text-[#6d5437]">{dictionary.chart.ctaBody}</p> 
                 </div>
                 <div className="rounded-xl bg-white/40 backdrop-blur-sm p-6 border border-[#b8925a]/10">

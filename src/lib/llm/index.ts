@@ -1,6 +1,6 @@
 /**
- * 火山引擎豆包 API 集成
- * 使用 OpenAI SDK 兼容模式
+ * OpenAI 兼容 LLM 接入
+ * 支持不同提供方，但统一走同一套报告生成与稳定性约束
  */
 
 import OpenAI from 'openai';
@@ -65,82 +65,298 @@ function createClient(config: LLMConfig = {}): OpenAI {
 
 // ─── System Prompt ─────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `你是紫微斗数专业分析师，精通斗数命理三十余年。
+const CHINESE_SECTION_HEADINGS = [
+  '## 命格总论',
+  '## 人生主要方向',
+  '## 当前大限',
+  '## 流年运势',
+  '## 六亲与健康',
+  '## 幸运元素',
+] as const;
 
-## 重要：读者背景
+const ENGLISH_SECTION_HEADINGS = [
+  '## Core Chart Identity',
+  '## Main Life Directions',
+  '## Current Major Cycle',
+  '## Annual Timing',
+  '## Family, Partnership, and Health',
+  '## Lucky Elements and Practical Guidance',
+] as const;
 
-**此命盘的主人不是中国人**，可能来自美国、欧洲、东南亚或其他地区。你需要：
-- 使用通用的职业描述（如"管理类工作"、"创意类工作"），不要用"公务员"、"国企"、"互联网大厂"等中国特有词汇
-- 使用通用的教育描述（如"高等教育"、"专业学习"），不要用"高考"、"考研"、"考公"
-- 使用通用的理财描述（如"稳健投资"、"储蓄"），不要用"人民币"、"A股"等
-- 时间使用公历日期，如"2026年3月15日"
+const SYSTEM_PROMPT = `你是资深紫微斗数分析师。
 
-## 核心原则
+你必须只用简体中文输出，不得输出英文标题、英文前言、免责声明、字数统计、自我纠正或多余说明。
+你必须以“看过大量命盘、能给出稳健结论的老师”口吻下判断，语气专业、克制、坚定，不夸张，不恐吓。
+你面对的是全球用户，表达必须地域中性、跨文化可理解，不得默认命主来自中国或任何特定国家地区。
+你必须严格遵守以下输出合同，不得改写“核心身份”标签，不得增删章节标题：
 
-1. **学术化分析**：以"此命格"、"命主"、"此造"为分析对象
-2. **专业+通俗**：专业术语 → 通俗解释
-3. **全球化视角**：避免任何国家特定的文化假设
-4. **具体可行**：建议具体到时间点
+核心身份：<1-2句，直接总结命格气质、优势与当前人生主轴>
 
-## 报告结构（6个部分）
+## 命格总论
+## 人生主要方向
+## 当前大限
+## 流年运势
+## 六亲与健康
+## 幸运元素
 
-### 1. 命格总论
-命宫主星 → 通俗解释性格 → 命运走向
+强制要求：
+- 先下判断，再讲依据，再给建议，像老师看盘后的定论，不像模板文章。
+- 专业术语后立刻接通俗解释，不要只堆术语。
+- 必须根据年龄阶段调整重点：
+  0-12岁聚焦先天气质、养育方式、健康节律、家庭环境与学习兴趣；
+  13-22岁聚焦成长、学习、身份认同、人际边界与家庭沟通；
+  23-59岁可以完整覆盖事业、财运、感情；
+  60岁以上聚焦健康、作息、家庭陪伴、心态与守成安排。
+- 对0-22岁，不要把事业、婚恋、财富写成当前主线，只能写未来潜势。
+- 对60岁以上，不要写冒险扩张、强竞争、激进转型式建议。
+- 整体基调必须让命主看到希望；即使指出阻滞，也必须解释为阶段性波动，并给出具体化解或调整办法。
+- 近一年如果有不顺，必须明确写出“先稳什么、避开什么、再争取什么”。
+- 流年运势必须给出 2-3 个具体公历日期或时间窗口。
+- 幸运元素必须明确写出幸运色、幸运数字、幸运方位。
+- 不要给出互相矛盾的判断，不要前后摇摆。
+- 不要使用带明显地域特色的词或制度名，例如高考、中考、考公、编制、985、211，或任何特定国家的考试、福利、法律、房产、移民、医保制度名称。
+- 不要写“以下为报告”“基于所提供信息”“仅供参考”这类前言或尾注。
+- 除命理术语外，不要夹杂整句英文。`;
 
-### 2. 人生主要方向
-事业/财运/感情：专业分析 → 通俗解释 → 通用建议
+const ENGLISH_SYSTEM_PROMPT = `You are an expert Zi Wei Dou Shu analyst.
 
-### 3. 当前大限
-十年运势特征 → 机遇与风险
+You must reply in English only. Do not add Chinese headings, opening notes, disclaimers, word counts, self-corrections, or meta commentary.
+Write like a seasoned master who has reviewed many charts: calm, authoritative, precise, and never alarmist.
+You are writing for a global audience. Keep the language region-neutral and do not assume the person belongs to any specific country, school system, legal system, or social structure.
+You must follow this exact output contract. Do not rename the summary label or the section headings:
 
-### 4. 流年运势
-当年整体运势 → 2-3个关键月份（公历日期）
-- 1-6月：分析全年
-- 7-12月：分析下半年 + 明年
+Core Identity: <1-2 sentences summarizing temperament, strengths, and the current life direction>
 
-### 5. 六亲与健康
-父母/配偶/子女/健康：专业术语 → 通俗解释
+## Core Chart Identity
+## Main Life Directions
+## Current Major Cycle
+## Annual Timing
+## Family, Partnership, and Health
+## Lucky Elements and Practical Guidance
 
-### 6. 幸运元素
-幸运色（2-3个）、幸运数字（2-3个）、幸运方位（1-2个）
+Requirements:
+- Lead with judgment, then evidence, then practical guidance. It should read like a final reading, not a generic article.
+- Explain traditional terms immediately in plain English.
+- Adjust the emphasis by life stage:
+  ages 0-12 focus on temperament, nurturing style, health rhythm, family environment, and learning tendencies;
+  ages 13-22 focus on growth, study, identity, friendships, boundaries, and family communication;
+  ages 23-59 may fully cover career, wealth, and relationships;
+  ages 60+ focus on health, daily rhythm, family bonds, emotional steadiness, and preservation rather than expansion.
+- For ages 0-22, do not treat career, romance, or wealth as current core themes; mention them only as future tendencies if needed.
+- For ages 60+, avoid aggressive expansion, high-risk competition, or restart narratives.
+- Keep the overall tone reassuring. If you mention obstacles, frame them as temporary timing issues and explain how to handle them.
+- If the next year contains friction, explicitly say what to stabilize first, what to avoid, and what to pursue next.
+- Include 2-3 concrete Gregorian dates or time windows in Annual Timing.
+- Keep the advice specific, practical, and globally understandable.
+- Do not produce contradictory conclusions or hedge back and forth.
+- Do not mention country-specific exams, school systems, welfare programs, immigration rules, property rules, healthcare systems, or legal institutions.
+- Do not start with phrases like "Below is the report" or "Based on the chart provided".`;
 
-## 写作格式
+type ReportLocale = 'en' | 'zh';
+type LifeStage = 'child' | 'youth' | 'adult' | 'midlife' | 'senior';
 
-每个分析：[专业术语] → [通俗解释] → [通用建议]
+function normalizeReportLocale(locale?: GenerateReportInput['locale']): ReportLocale {
+  return locale === 'zh' ? 'zh' : 'en';
+}
 
-示例：
-"官禄宫天机太阴坐守 → 适合需要思考和分析的工作，如咨询、策划、研究 → 建议在相关领域积累经验"
+function getAgeFromBirthDate(birthDate: string, referenceDate: Date = new Date()): number {
+  const birth = new Date(`${birthDate}T00:00:00`);
 
-## 禁止输出
+  if (Number.isNaN(birth.getTime())) {
+    return 30;
+  }
 
-- 标题中的字数（如"227字"）
-- 中国特有词汇（高考、公务员、国企、考研等）
-- 免责声明
-- 自我纠正
-- 犹豫表述
+  let age = referenceDate.getFullYear() - birth.getFullYear();
+  const monthDiff = referenceDate.getMonth() - birth.getMonth();
+  const dayDiff = referenceDate.getDate() - birth.getDate();
 
-总字数2000-3000字`;
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age -= 1;
+  }
 
-const ENGLISH_SYSTEM_PROMPT = `You are an expert Zi Wei Dou Shu analyst with decades of practice.
+  return Math.max(0, age);
+}
 
-Write for an international reader in natural English.
+function getLifeStage(age: number): LifeStage {
+  if (age <= 12) {
+    return 'child';
+  }
 
-Core rules:
-- Keep the tone professional, calm, and specific.
-- Explain each traditional term in plain English.
-- Avoid China-specific career, exam, or financial assumptions.
-- Use concrete Gregorian dates when mentioning timing.
-- Do not add word counts, disclaimers, hedging, or self-corrections.
+  if (age <= 22) {
+    return 'youth';
+  }
 
-Structure the report into 6 sections:
-1. Core chart identity
-2. Main life directions
-3. Current major cycle
-4. Annual timing and key months
-5. Family, partnership, and health
-6. Lucky elements and practical guidance
+  if (age <= 39) {
+    return 'adult';
+  }
 
-Write 1800-2600 words.`;
+  if (age <= 59) {
+    return 'midlife';
+  }
+
+  return 'senior';
+}
+
+function getLifeStageLabel(stage: LifeStage, locale: ReportLocale): string {
+  if (locale === 'zh') {
+    const labels: Record<LifeStage, string> = {
+      child: '儿童期',
+      youth: '成长与学习期',
+      adult: '成年起步期',
+      midlife: '成熟与承责期',
+      senior: '高龄与守成期',
+    };
+
+    return labels[stage];
+  }
+
+  const labels: Record<LifeStage, string> = {
+    child: 'Childhood',
+    youth: 'Youth and Development',
+    adult: 'Early Adulthood',
+    midlife: 'Maturity and Responsibility',
+    senior: 'Senior Years',
+  };
+
+  return labels[stage];
+}
+
+function getLifeStagePromptGuidance(stage: LifeStage, locale: ReportLocale): string {
+  if (locale === 'zh') {
+    const guidance: Record<LifeStage, string> = {
+      child: `- 当前是儿童阶段，请聚焦先天气质、养育方式、健康节律、家庭环境、学习兴趣与适合的支持方式。
+- 不要把事业、婚恋、财富写成当前议题，如需提及只能写成未来潜势。`,
+      youth: `- 当前是成长学习阶段，请聚焦学习节奏、自我认同、人际边界、家庭沟通、情绪稳定与兴趣发展。
+- 不要使用任何地区特定的升学或考试制度名称。`,
+      adult: `- 当前是成年起步阶段，请完整覆盖事业、财务、感情、合作与生活方向。
+- 表达必须全球通用，不要代入某个国家地区的制度背景。`,
+      midlife: `- 当前是成熟承责阶段，请聚焦事业沉淀、资产节奏、家庭责任、关系修复与身体预警。
+- 建议应偏稳健升级，不要写空泛鸡汤。`,
+      senior: `- 当前是高龄守成阶段，请聚焦健康、作息、家庭陪伴、心态稳定、晚年福气与资源守成。
+- 不要写冒险扩张、创业冲刺、激进竞争式建议。`,
+    };
+
+    return guidance[stage];
+  }
+
+  const guidance: Record<LifeStage, string> = {
+    child: `- This is a child chart. Focus on temperament, nurturing style, health rhythm, family environment, learning curiosity, and the support the caregivers should provide.
+- Do not treat career, romance, or wealth as current themes; mention them only as distant future tendencies if truly needed.`,
+    youth: `- This is a youth chart. Focus on study rhythm, identity formation, boundaries, friendships, family communication, emotional stability, and talent development.
+- Do not use region-specific education or exam terms.`,
+    adult: `- This is an early-adult chart. Fully cover career, wealth, relationships, collaboration, and life direction.
+- Keep every recommendation globally understandable rather than tied to one country or culture.`,
+    midlife: `- This is a mature-adult chart. Focus on career consolidation, assets, family responsibility, relationship repair, and health warnings.
+- Recommendations should favor steady upgrades rather than generic motivation.`,
+    senior: `- This is a senior chart. Focus on health, daily rhythm, family bonds, emotional steadiness, late-life blessings, and preserving resources.
+- Avoid expansionist, high-risk, or restart-heavy advice.`,
+  };
+
+  return guidance[stage];
+}
+
+function getSectionHeadings(locale: ReportLocale): readonly string[] {
+  return locale === 'zh' ? CHINESE_SECTION_HEADINGS : ENGLISH_SECTION_HEADINGS;
+}
+
+function unwrapMarkdownFence(content: string): string {
+  const trimmed = content.trim();
+  const match = trimmed.match(/^```(?:markdown|md|text)?\s*([\s\S]*?)\s*```$/i);
+  return match ? match[1].trim() : trimmed;
+}
+
+function normalizeReportContent(content: string): string {
+  return unwrapMarkdownFence(content).replace(/\r\n/g, '\n').trim();
+}
+
+function buildFallbackCoreIdentity(input: GenerateReportInput, locale: ReportLocale): string {
+  if (locale === 'zh') {
+    return `命宫${input.mingGong}坐守，${input.wuXingJu}，四柱${input.siZhu.year}年${input.siZhu.month}月${input.siZhu.day}日${input.siZhu.hour}时生。`;
+  }
+
+  return `Life palace ${input.mingGong}; five-element pattern ${input.wuXingJu}; born under ${input.siZhu.year} ${input.siZhu.month} ${input.siZhu.day} ${input.siZhu.hour}.`;
+}
+
+export function extractCoreIdentity(content: string, locale: ReportLocale): string | null {
+  const normalized = normalizeReportContent(content);
+  const patterns = locale === 'zh'
+    ? [
+        /^核心身份[:：]\s*(.+)$/im,
+        /^\*\*核心身份[:：]\*\*\s*(.+)$/im,
+      ]
+    : [
+        /^Core Identity:\s*(.+)$/im,
+        /^\*\*Core Identity:\*\*\s*(.+)$/im,
+      ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    const value = match?.[1]?.trim();
+    if (value) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+export function validateReportOutput(content: string, locale: ReportLocale): string[] {
+  const normalized = normalizeReportContent(content);
+  const errors: string[] = [];
+  const coreIdentity = extractCoreIdentity(normalized, locale);
+
+  if (!coreIdentity) {
+    errors.push('missing core identity');
+  }
+
+  const missingHeadings = getSectionHeadings(locale).filter((heading) => !normalized.includes(heading));
+  if (missingHeadings.length > 0) {
+    errors.push(`missing headings: ${missingHeadings.join(', ')}`);
+  }
+
+  if (locale === 'zh') {
+    if (/^Core Identity:/im.test(normalized) || normalized.includes('## Core Chart Identity')) {
+      errors.push('contains english heading contract');
+    }
+  } else {
+    if (/^核心身份[:：]/m.test(normalized) || normalized.includes('## 命格总论')) {
+      errors.push('contains chinese heading contract');
+    }
+  }
+
+  const regionSpecificPatterns = locale === 'zh'
+    ? [/高考/, /中考/, /考公/, /编制/, /985/, /211/]
+    : [/\bgaokao\b/i, /\bSAT\b/i, /\bACT\b/i, /\bA-?Level\b/i, /\bGCSE\b/i, /\bUCAS\b/i];
+
+  if (regionSpecificPatterns.some((pattern) => pattern.test(normalized))) {
+    errors.push('contains region-specific references');
+  }
+
+  return errors;
+}
+
+function getPromptBirthTimeLabel(hour: number, locale: ReportLocale): string {
+  if (locale === 'zh') {
+    return getShichenName(hour);
+  }
+
+  const englishMap: Record<number, string> = {
+    0: 'Zi hour (23:00-01:00)',
+    1: 'Chou hour (01:00-03:00)',
+    2: 'Yin hour (03:00-05:00)',
+    3: 'Mao hour (05:00-07:00)',
+    4: 'Chen hour (07:00-09:00)',
+    5: 'Si hour (09:00-11:00)',
+    6: 'Wu hour (11:00-13:00)',
+    7: 'Wei hour (13:00-15:00)',
+    8: 'Shen hour (15:00-17:00)',
+    9: 'You hour (17:00-19:00)',
+    10: 'Xu hour (19:00-21:00)',
+    11: 'Hai hour (21:00-23:00)',
+  };
+
+  return englishMap[hour] || 'Unknown birth-time block';
+}
 
 
 // ─── User Prompt Template ──────────────────────────────────────────────────────
@@ -149,37 +365,50 @@ Write 1800-2600 words.`;
 import { formatAstrolabeForLLM } from '../ziwei/wrapper';
 
 function buildUserPrompt(input: GenerateReportInput): string {
-  const locale = input.locale || 'en';
-  const shichenName = getShichenName(input.birthTime);
+  const locale = normalizeReportLocale(input.locale);
+  const shichenName = getPromptBirthTimeLabel(input.birthTime, locale);
   const genderCn = input.gender === 'male' ? '男' : '女';
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1; // 1-12
   const halfYear = currentMonth <= 6 ? '上半年' : '下半年';
+  const age = getAgeFromBirthDate(input.birthDate);
+  const lifeStage = getLifeStage(age);
+  const lifeStageLabel = getLifeStageLabel(lifeStage, locale);
+  const lifeStageGuidance = getLifeStagePromptGuidance(lifeStage, locale);
 
   // 如果有原始命盘数据，使用完整格式化
   let astrolabeData = '';
   if (input.rawAstrolabe) {
     astrolabeData = formatAstrolabeForLLM(input.rawAstrolabe);
   } else {
-    // 降级到简化格式
-    astrolabeData = `## 命盘核心
+    astrolabeData = locale === 'zh'
+      ? `## 命盘核心
 - 命宫主星: ${input.mingGong}
 - 五行局: ${input.wuXingJu}
 - 生肖: ${input.chineseZodiac}
 
 ## 十二宫星曜
-${formatPalaces(input.palaces)}`;
+${formatPalaces(input.palaces, locale)}`
+      : `## Chart Core
+- Life palace stars: ${input.mingGong}
+- Five-element pattern: ${input.wuXingJu}
+- Chinese zodiac: ${input.chineseZodiac}
+
+## Palace Stars
+${formatPalaces(input.palaces, locale)}`;
   }
 
   if (locale === 'en') {
     const genderEn = input.gender === 'male' ? 'Male' : 'Female';
     const halfYearEn = currentMonth <= 6 ? 'first half' : 'second half';
 
-    return `Please analyze this Zi Wei Dou Shu chart in English.
+    return `Write the final report in English only.
 
 ## Basic profile
 - Gender: ${genderEn}
 - Birth date: ${input.birthDate}
+- Current age: ${age}
+- Life stage: ${lifeStageLabel}
 - Birth time block: ${shichenName}
 - Birthplace reference: ${input.birthCity}
 - Current timing context: ${currentYear}-${String(currentMonth).padStart(2, '0')} (${halfYearEn})
@@ -199,22 +428,51 @@ ${formatPalaces(input.palaces)}`;
 ## Full chart data
 ${astrolabeData}
 
-Write the report in 6 clear sections:
-1. Core chart identity
-2. Main life directions
-3. Current major cycle
-4. ${currentYear} timing and 2-3 important months with concrete dates
-5. Family, partnership, and health
-6. Lucky elements and practical guidance
+## Life-stage emphasis
+${lifeStageGuidance}
 
-Writing requirements:
-- Explain each traditional concept in plain English.
-- Keep recommendations concrete and realistic.
-- Use modern global career and life language.
-- Do not add disclaimers or word counts.`;
+## Global wording rules
+- Do not assume a specific country, city, exam system, welfare system, legal system, or migration context.
+- Keep examples universal and metaphysical rather than institutional.
+
+The raw chart data may contain Chinese palace or star names. Interpret them, but keep the final answer fully in English.
+
+Use this exact markdown structure:
+
+Core Identity: <1-2 sentences summarizing temperament, strengths, and the current life direction>
+
+## Core Chart Identity
+- Explain the life palace pattern, major stars, and five-element pattern in plain English.
+
+## Main Life Directions
+- Follow the life-stage emphasis above.
+- When the native is 23-59, cover career, wealth, and relationships separately.
+- When the native is 0-22 or 60+, rewrite this section around age-appropriate themes instead of forcing adult topics.
+
+## Current Major Cycle
+- Explain the current ten-year cycle, the main opportunities, and the main risks.
+
+## Annual Timing
+- Focus on ${currentYear}.
+- Mention 2-3 concrete Gregorian dates or time windows.
+- Current context: ${halfYearEn}.
+
+## Family, Partnership, and Health
+- Keep the life-stage emphasis above.
+- For minors, focus on caregivers, family environment, boundaries, and health rhythm.
+- For seniors, prioritize health, family bonds, routine, and emotional steadiness.
+
+## Lucky Elements and Practical Guidance
+- Include lucky colors, lucky numbers, lucky directions, and 2-3 practical actions.
+
+Output rules:
+- Keep "Core Identity:" as the first line, not a heading.
+- Use the exact section headings above.
+- Do not number sections.
+- Do not start with an introduction or end with a disclaimer.`;
   }
 
-  return `请分析以下紫微斗数命盘：
+  return `请只用简体中文输出最终报告。
 
 ## 基本信息
 
@@ -222,6 +480,8 @@ Writing requirements:
 |------|------|
 | 性别 | ${genderCn}命 |
 | 出生日期 | ${input.birthDate} |
+| 当前年龄 | ${age}岁 |
+| 人生阶段 | ${lifeStageLabel} |
 | 出生时辰 | ${shichenName} |
 | 出生地点 | ${input.birthCity} |
 | 当前时间 | ${currentYear}年${currentMonth}月（${halfYear}） |
@@ -236,35 +496,49 @@ Writing requirements:
 
 ${astrolabeData}
 
----
+## 年龄阶段重点
+${lifeStageGuidance}
 
-请按照以下6个部分撰写分析报告（标题中不要包含字数）：
+## 全球通用表达要求
+- 不要默认命主属于某个国家、城市、教育制度、福利制度、法律制度或移民背景。
+- 尽量从命理与人生节奏角度分析，避免制度性、地方性名词。
 
-### 1. 命格总论
-分析命宫主星、五行局、格局，专业术语后必须跟通俗解释。
+请严格按照下面的结构撰写，不得增删标题，不得改写“核心身份”标签：
 
-### 2. 人生主要方向
-综合分析事业、财运、感情三个方向。每个方向：专业分析 → 通俗解释 → 具体建议。
+核心身份：<1-2句，直接总结命格气质、优势与当前人生主轴>
 
-### 3. 当前大限
-分析当前十年大运的宫位、主星、四化，通俗解释此十年的机遇与风险。
+## 命格总论
+- 分析命宫主星、五行局、格局。
+- 每个专业术语后都要立刻接通俗解释。
 
-### 4. 流年运势
-分析${currentYear}年流年，重点标注2-3个关键月份及具体公历日期。
-**当前是${halfYear}**：${currentMonth <= 6 ? '请分析全年运势' : '请分析下半年运势 + 明年大致走向'}。
+## 人生主要方向
+- 必须遵守上面的年龄阶段重点。
+- 23-59岁可以分别分析事业、财运、感情，并写成“专业判断 → 通俗解释 → 具体建议”。
+- 0-22岁或60岁以上，不要强行套用成人议题，要改写成符合年龄阶段的重点方向。
 
-### 5. 六亲与健康
-分析父母宫、夫妻宫、子女宫、疾厄宫，每项都要通俗解释。
+## 当前大限
+- 分析当前十年大运的宫位、主星、四化。
+- 说明主要机遇与风险。
 
-### 6. 幸运元素
-列出幸运色（2-3个）、幸运数字（2-3个）、幸运方位（1-2个）。
+## 流年运势
+- 聚焦 ${currentYear} 年。
+- 当前时间背景：${halfYear}。
+- 给出 2-3 个具体公历日期或时间窗口。
 
----
-写作要求：
-- 每个专业术语后必须跟"→"和通俗解释
-- 时间具体化（如"2026年8月15日"）
-- 避免绝对化表述
-- 总字数2000-3000字`;
+## 六亲与健康
+- 必须遵守上面的年龄阶段重点。
+- 未成年人重点写父母、家庭支持、成长环境、健康节律。
+- 高龄重点写家庭陪伴、身心状态、作息与健康管理。
+- 保持通俗、具体。
+
+## 幸运元素
+- 明确写出幸运色、幸运数字、幸运方位。
+- 最后补 2-3 条可执行建议。
+
+输出要求：
+- “核心身份：”必须作为第一行，不能写成标题。
+- 不要写“以下为报告”“仅供参考”等前言尾注。
+- 不要夹杂整句英文。`;
 }
 
 function getShichenName(hour: number): string {
@@ -285,11 +559,16 @@ function getShichenName(hour: number): string {
   return shichenMap[hour] || '未知时辰';
 }
 
-function formatPalaces(palaces: GenerateReportInput['palaces']): string {
+function formatPalaces(palaces: GenerateReportInput['palaces'], locale: ReportLocale): string {
   return palaces
     .map((p) => {
-      const stars = [...p.majorStars, ...p.minorStars].join('、') || '无主星';
-      return `- ${p.name}：${stars}`;
+      const stars = [...p.majorStars, ...p.minorStars];
+
+      if (locale === 'zh') {
+        return `- ${p.name}：${stars.join('、') || '无主星'}`;
+      }
+
+      return `- ${p.name}: ${stars.join(', ') || 'No major stars'}`;
     })
     .join('\n');
 }
@@ -303,60 +582,56 @@ export async function generateReport(
   const model = config.model || process.env.DOUBAO_MODEL || DEFAULT_MODEL;
   const apiKey = config.apiKey || process.env.DOUBAO_API_KEY || '';
   const baseURL = config.baseURL || process.env.DOUBAO_BASE_URL || DEFAULT_BASE_URL;
+  const locale = normalizeReportLocale(input.locale);
 
   const userPrompt = buildUserPrompt(input);
-  const systemPrompt = input.locale === 'zh' ? SYSTEM_PROMPT : ENGLISH_SYSTEM_PROMPT;
+  const systemPrompt = locale === 'zh' ? SYSTEM_PROMPT : ENGLISH_SYSTEM_PROMPT;
 
   try {
     console.log('Calling LLM API with model:', model);
     console.log('API Key exists:', !!apiKey);
     console.log('Base URL:', baseURL);
-
-    // 使用原生 fetch 调用，更可控
-    const response = await fetch(`${baseURL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        max_tokens: 6144,
-        temperature: 0.7,
-      }),
+    let content = await requestReportCompletion({
+      apiKey,
+      baseURL,
+      model,
+      systemPrompt,
+      userPrompt,
+      temperature: 0.3,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Response Error:', response.status, errorText);
-      throw new Error(`API 返回错误 ${response.status}: ${errorText}`);
+    let normalizedContent = normalizeReportContent(content);
+    let validationErrors = validateReportOutput(normalizedContent, locale);
+
+    if (validationErrors.length > 0) {
+      console.warn('LLM report failed validation, retrying once:', validationErrors.join('; '));
+
+      content = await requestReportCompletion({
+        apiKey,
+        baseURL,
+        model,
+        systemPrompt,
+        userPrompt: `${userPrompt}
+
+${locale === 'zh'
+          ? '上一次输出未通过格式校验，请从头重写整份报告，并严格遵守既定的摘要标签与章节标题。'
+          : 'Previous output failed the format check. Rewrite the entire report from scratch and follow the summary label and section headings exactly.'}`,
+        temperature: 0.2,
+      });
+
+      normalizedContent = normalizeReportContent(content);
+      validationErrors = validateReportOutput(normalizedContent, locale);
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-
-    if (!content) {
-      console.error('Empty response from API:', JSON.stringify(data));
-      throw new Error('API 返回空内容');
+    if (validationErrors.length > 0) {
+      throw new Error(`报告结构不稳定: ${validationErrors.join('; ')}`);
     }
 
-    // 提取核心身份（第一个段落或前100字）
-    const coreIdentityMatch = content.match(/核心身份[：:]\s*([^\n]+)/);
-    let coreIdentity = coreIdentityMatch?.[1]?.trim() || '';
-
-    if (!coreIdentity) {
-      // 如果没有明确的核心身份标记，取第一段作为核心身份
-      const firstParagraph = content.split('\n\n')[0];
-      coreIdentity = firstParagraph?.substring(0, 100) || input.mingGong;
-    }
+    const coreIdentity = extractCoreIdentity(normalizedContent, locale) || buildFallbackCoreIdentity(input, locale);
 
     return {
       coreIdentity,
-      report: content,
+      report: normalizedContent,
     };
   } catch (error) {
     console.error('LLM API Error:', error);
@@ -368,6 +643,57 @@ export async function generateReport(
   }
 }
 
+interface ReportCompletionRequest {
+  apiKey: string;
+  baseURL: string;
+  model: string;
+  systemPrompt: string;
+  userPrompt: string;
+  temperature: number;
+}
+
+async function requestReportCompletion({
+  apiKey,
+  baseURL,
+  model,
+  systemPrompt,
+  userPrompt,
+  temperature,
+}: ReportCompletionRequest): Promise<string> {
+  const response = await fetch(`${baseURL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      max_tokens: 6144,
+      temperature,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('API Response Error:', response.status, errorText);
+    throw new Error(`API 返回错误 ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+
+  if (!content) {
+    console.error('Empty response from API:', JSON.stringify(data));
+    throw new Error('API 返回空内容');
+  }
+
+  return content;
+}
+
 // ─── Mock Function for Development ─────────────────────────────────────────────
 
 // 获取当前年份的辅助函数
@@ -375,317 +701,174 @@ function getCurrentYear(): number {
   return new Date().getFullYear();
 }
 
-export function generateMockReport(input: GenerateReportInput): GenerateReportOutput {
-  if ((input.locale || 'en') === 'en') {
-    const shichenName = getShichenName(input.birthTime);
-    const currentYear = getCurrentYear();
-    const coreIdentity = `Life palace ${input.mingGong}, ${input.wuXingJu}, born under ${input.siZhu.year} ${input.siZhu.month} ${input.siZhu.day} ${input.siZhu.hour}.`;
+function buildEnglishMockMainDirections(stage: LifeStage): string {
+  const content: Record<LifeStage, string> = {
+    child: `- Growth focus: this stage is about temperament, learning rhythm, curiosity, and the home environment that helps the child feel safe enough to explore.
+- Caregiver guidance: teach through routine, encouragement, and patient repetition; harsh pressure works against this chart.
+- Future tendency: later in life, the chart is capable of steady professional progress, but right now the priority is healthy development rather than adult success metrics.`,
+    youth: `- Growth focus: this stage favors identity-building, study rhythm, friendships, emotional boundaries, and choosing environments that support confidence rather than comparison.
+- Family guidance: the chart responds better to calm structure and clear expectations than to constant control or criticism.
+- Future tendency: long-term career and wealth potential are present, but the present task is skill-building, stability, and self-trust.`,
+    adult: `- Career: ${baseAdultEnglishCareer}
+- Wealth: ${baseAdultEnglishWealth}
+- Relationships: ${baseAdultEnglishRelationships}`,
+    midlife: `- Career and responsibility: this stage is best used to consolidate reputation, deepen authority, and simplify scattered obligations.
+- Wealth and assets: the chart favors steadier allocation, cleaner boundaries, and protecting what already works before chasing unnecessary expansion.
+- Relationships and family: this phase improves when expectations are spoken early and family roles are handled with fairness rather than silent pressure.`,
+    senior: `- Life focus: the main theme now is health rhythm, emotional steadiness, family closeness, and preserving dignity, energy, and peace of mind.
+- Resources: wealth at this stage should be framed as protection, order, and ease of living rather than expansion or risk-taking.
+- Relationships: companionship, dependable family bonds, and a calm daily routine matter more than dramatic change.`,
+  };
 
+  return content[stage];
+}
+
+function buildChineseMockMainDirections(stage: LifeStage): string {
+  const content: Record<LifeStage, string> = {
+    child: `- 成长重点：当前阶段要看先天气质、学习兴趣、作息节律、情绪安稳度与家庭支持方式。
+- 养育建议：这类命盘更适合温和而有边界的引导，不适合高压逼迫或反复否定。
+- 未来潜势：成年后的事业与财运底子不差，但现在最重要的是把身心节律和安全感养稳。`,
+    youth: `- 成长重点：当前阶段重在学习节奏、自我认同、人际边界、兴趣发展与情绪稳定。
+- 家庭建议：这类命盘适合“清晰规则 + 适度尊重”，越能被理解，越能长出自信与执行力。
+- 未来潜势：事业、财运与感情潜力都在，但此刻真正的主线是成长、能力和判断力。`,
+    adult: `- 事业：${baseAdultChineseCareer}
+- 财运：${baseAdultChineseWealth}
+- 感情：${baseAdultChineseRelationships}`,
+    midlife: `- 事业与责任：这个阶段更适合沉淀口碑、整合资源、减少无效消耗，把精力集中到真正值得长期经营的方向。
+- 财务与资产：重在守住现金流、稳定节奏、优化资产安排，而不是盲目扩大摊子。
+- 家庭与关系：越早说清期待与分工，越能减少误解，关系会因稳定和担当而加分。`,
+    senior: `- 生命重点：当前更该看身体、作息、心态、家庭陪伴与晚年节律，而不是冒险求变。
+- 资源安排：财务重点在守成、安心、减少波动，让生活更稳更从容。
+- 关系重点：与家人之间保持温和沟通、规律联系和现实照应，比外在热闹更重要。`,
+  };
+
+  return content[stage];
+}
+
+function buildEnglishMockFamilyHealth(stage: LifeStage): string {
+  const content: Record<LifeStage, string> = {
+    child: `- Family dynamics: caregivers set the emotional weather, so a stable rhythm and calm tone help this child open up and learn faster.
+- Development and wellbeing: watch sleep, digestion, overstimulation, and transitions between environments.
+- Guidance: praise effort, not only outcomes, and keep routines predictable.`,
+    youth: `- Family dynamics: the chart benefits from respectful guidance rather than heavy control; trust grows when communication stays specific and calm.
+- Friendships and boundaries: this stage needs steady peers, not dramatic social circles.
+- Health rhythm: protect sleep, screen balance, and emotional recovery during stressful periods.`,
+    adult: `- Family dynamics improve when expectations are stated early, because this chart handles responsibility well but loses patience with ambiguity.
+- Partnership rhythm favors steadiness over drama, and attraction grows through trust, competence, and reliability.
+- Health guidance: protect sleep, digestion, and stress recovery, especially during periods of heavy mental load or schedule compression.`,
+    midlife: `- Family dynamics: responsibility is high in this phase, so clear roles and practical communication reduce pressure for everyone.
+- Relationship rhythm: maturity, consistency, and shared routines bring better results than emotional guessing.
+- Health guidance: watch chronic stress, inflammation, sleep depth, and recovery after overwork.`,
+    senior: `- Family dynamics: warm, regular contact and clear practical arrangements create peace of mind.
+- Emotional wellbeing: this chart does better with steadiness, sunlight, movement, and a familiar daily rhythm than with disruption.
+- Health guidance: focus on sleep, circulation, digestion, mobility, and timely checkups.`,
+  };
+
+  return content[stage];
+}
+
+function buildChineseMockFamilyHealth(stage: LifeStage): string {
+  const content: Record<LifeStage, string> = {
+    child: `- 家庭与养育：父母的情绪与节奏就是孩子的气场环境，越稳定、越规律，孩子越容易安心成长。
+- 成长与健康：重点留意作息、消化、受惊敏感度与环境切换时的适应力。
+- 建议：多鼓励、少贴标签，让孩子在稳定边界里自然长开。`,
+    youth: `- 家庭与成长：越是成长阶段，越需要被理解和被尊重，而不是一味控制。
+- 人际与边界：适合稳定、干净的人际圈，少卷入反复拉扯的关系。
+- 健康节律：重点看睡眠、情绪恢复、久坐疲劳与精神压力。`,
+    adult: `- 父母与长辈：适合讲清事实与安排 → 越具体越容易减少误解。
+- 伴侣关系：重视稳定、信任与执行力 → 关系质量往往取决于是否能把承诺落实到生活细节。
+- 健康：要重点留意睡眠、消化、压力堆积后的疲劳反应 → 建议固定作息，并在高压阶段保留恢复时间。`,
+    midlife: `- 家庭与责任：这个阶段责任重，越要把分工、边界和节奏提前说清。
+- 关系修复：关系不是靠猜，而是靠稳定兑现和现实照顾。
+- 健康重点：关注慢性疲劳、炎症、睡眠深度、肩颈腰背与恢复能力。`,
+    senior: `- 家庭与陪伴：规律联系、现实照应、心气安稳，比表面热闹更重要。
+- 心态与节律：情绪平稳、作息规律、适度活动，就是这阶段最大的运势加分项。
+- 健康重点：重点看睡眠、循环、消化、关节活动度与定期检查。`,
+  };
+
+  return content[stage];
+}
+
+const baseAdultEnglishCareer = 'the chart favors roles that mix strategy, coordination, and visible responsibility.';
+const baseAdultEnglishWealth = 'measured accumulation beats emotional risk-taking, especially when decisions are backed by structure.';
+const baseAdultEnglishRelationships = 'the chart responds well to honest pacing, direct communication, and partners who respect independence without emotional distance.';
+
+const baseAdultChineseCareer = '适合管理、统筹、策划、顾问、业务拓展等需要判断和推进的角色。';
+const baseAdultChineseWealth = '财务更适合稳健配置，不宜长期依赖冲动型决策。';
+const baseAdultChineseRelationships = '感情更怕反复试探，不怕坦诚沟通，适合把期待说清。';
+
+export function generateMockReport(input: GenerateReportInput): GenerateReportOutput {
+  const locale = normalizeReportLocale(input.locale);
+  const currentYear = getCurrentYear();
+  const age = getAgeFromBirthDate(input.birthDate);
+  const stage = getLifeStage(age);
+  const coreIdentity = buildFallbackCoreIdentity(input, locale);
+
+  if (locale === 'en') {
     return {
       coreIdentity,
-      report: `# Zi Wei Dou Shu Reading
+      report: `Core Identity: ${coreIdentity}
 
-## Core Identity
-
-${coreIdentity}
-
-This chart centers on **${input.mingGong}** in the life palace, which suggests a life pattern shaped by self-direction, strong instincts, and a need to understand timing before making major moves.
+## Core Chart Identity
+- Life palace pattern: ${input.mingGong} frames the chart's instinctive style, so the native tends to move with strong timing awareness and a practical sense of direction.
+- Five-element pattern: ${input.wuXingJu} points to a steady, cumulative way of building progress, which favors disciplined systems over impulsive jumps.
+- Plain-English takeaway: this chart does best when judgment, patience, and long-range planning work together.
 
 ## Main Life Directions
-
-- **Career**: ${input.mingGong} in the life palace often favors roles that combine judgment, timing, and relationship management.
-- **Wealth**: ${input.wuXingJu} suggests steady accumulation works better than impulsive risk.
-- **Relationships**: The chart benefits from clarity, emotional pacing, and mature communication.
+${buildEnglishMockMainDirections(stage)}
 
 ## Current Major Cycle
+- The current ten-year cycle is better for repositioning than for standing still, so this is a phase for clarifying standards, pruning distractions, and upgrading commitments.
+- Main opportunity: convert experience into authority, repeatable systems, and a cleaner public role.
+- Main risk: overcommitting to urgent noise instead of the few paths that genuinely compound.
 
-Your current cycle points toward transition rather than stagnation. This is a phase for restructuring priorities, refining professional positioning, and choosing higher-quality commitments.
-
-## ${currentYear} Timing
-
-- Focus on one career move in the next 90 days.
-- Watch for stronger momentum around late spring and early autumn.
-- Treat rushed decisions as a warning sign, not a green light.
+## Annual Timing
+- ${currentYear}-04-18 to ${currentYear}-04-30 is favorable for proposals, interviews, or role negotiations that need visibility and decisive follow-up.
+- ${currentYear}-08-12 to ${currentYear}-08-28 is a stronger window for financial decisions, partnership alignment, and resource concentration.
+- ${currentYear}-11-06 to ${currentYear}-11-20 is better for review, recalibration, and closing unfinished obligations before the next cycle.
 
 ## Family, Partnership, and Health
+${buildEnglishMockFamilyHealth(stage)}
 
-The chart does better with routine, sleep discipline, and selective social energy. In close relationships, transparency matters more than intensity.
-
-## Lucky Elements and Guidance
-
-- **Lucky colors**: gold, deep green, plum
-- **Lucky directions**: south, southeast
-- **Lucky numbers**: 1, 6, 8
-
-Use the chart as a timing framework: move deliberately, keep your commitments clean, and choose long-term alignment over short-term noise.`,
+## Lucky Elements and Practical Guidance
+- Lucky colors: deep green, warm gold, charcoal.
+- Lucky numbers: 1, 6, 8.
+- Lucky directions: south, southeast.
+- Practical actions: simplify one commitment this month, lock one repeatable work routine within 14 days, and schedule one concrete financial review before ${currentYear}-08-28.`,
     };
   }
 
-  const shichenName = getShichenName(input.birthTime);
-  const genderCn = input.gender === 'male' ? '男' : '女';
-  const currentYear = getCurrentYear(); // 动态获取当前年份
-
-  // 专业化核心身份描述
-  const coreIdentity = `命宫${input.mingGong}坐守，${input.wuXingJu}，四柱${input.siZhu.year}年${input.siZhu.month}月${input.siZhu.day}日${input.siZhu.hour}时生。`;
-
-  const report = `# 紫微斗数命盘专业解读
-# Zi Wei Dou Shu Professional Reading
-
----
-
-## 核心身份 · Core Identity
-
-${coreIdentity}
-
-**命宫 Ming Gong (Life Palace)**: ${input.mingGong}坐守
-**五行局 Wu Xing Ju (Five Elements)**: ${input.wuXingJu}
-**格局 Ge Ju (Pattern)**: 紫府同临格（示例）
-
----
-
-## 命盘结构 · Chart Structure Analysis
-
-### 基本信息 (Basic Information)
-
-| 项目 Item | 内容 Value |
-|-----------|------------|
-| 性别 Gender | ${genderCn} |
-| 出生日期 Birth Date | ${input.birthDate} |
-| 出生时辰 Birth Hour | ${shichenName} |
-| 生肖 Chinese Zodiac | ${input.chineseZodiac} |
-| 西方星座 Western Zodiac | ${input.zodiac} |
-
-### 四柱八字 (Four Pillars / Bazi)
-
-| 年柱 Year | 月柱 Month | 日柱 Day | 时柱 Hour |
-|-----------|------------|----------|-----------|
-| ${input.siZhu.year} | ${input.siZhu.month} | ${input.siZhu.day} | ${input.siZhu.hour} |
-
-### 十二宫星曜配置 (12 Palaces Star Configuration)
-
-| 宫位 Palace | 主星 Major Stars | 辅星 Minor Stars | 四化 Transformations |
-|-------------|-----------------|-----------------|---------------------|
-| 命宫 Ming Gong | ${input.mingGong} | 文昌、左辅 | 紫微化科 |
-| 兄弟宫 Siblings Palace | 天机 | 天刑 | - |
-| 夫妻宫 Spouse Palace | 太阳 | 文曲、天魁 | 太阳化禄 |
-| 子女宫 Children Palace | 武曲 | 天喜 | 武曲化权 |
-| 财帛宫 Wealth Palace | 天同 | 擎羊 | 天同化忌 |
-| 疾厄宫 Health Palace | 廉贞 | 火星 | - |
-| 迁移宫 Migration Palace | 天府 | 铃星 | - |
-| 仆役宫 Servants Palace | 太阴 | 地劫 | 太阴化忌 |
-| 官禄宫 Career Palace | 贪狼 | 右弼 | 贪狼化权 |
-| 田宅宫 Property Palace | 巨门 | 天姚 | - |
-| 福德宫 Fortune Palace | 天相 | 陀罗 | - |
-| 父母宫 Parents Palace | 天梁 | 天官 | 天梁化禄 |
-
----
-
-## 大限分析 · Major Period (Da Xian) Analysis
-
-**当前大限宫位 Current Da Xian Palace**: 官禄宫 (Career Palace)
-**大限年龄范围 Age Range**: 36-45岁
-**大限主星 Major Stars**: 贪狼（化权）
-**大限四化 Da Xian Four Transformations**: 贪狼化权、太阴化忌、天梁化禄、紫微化科
-
-### 大限运势解析
-
-官禄宫大限，主事业方面有显著变化。贪狼化权坐守，显示此十年期间：
-- 事业宫位得权星加持，主掌权、升迁、创业
-- 需注意太阴化忌冲照财帛，投资宜保守
-- 天梁化禄入父母宫，得长辈贵人相助
-
----
-
-## 事业宫分析 · Career Palace Analysis
-
-**官禄宫主星**: 贪狼（化权）
-**辅星**: 右弼
-**格局判定**: 贪狼坐官禄，主开拓进取、善于交际
-
-### 事业特质
-
-贪狼星入官禄宫，主：
-- 擅长人际交往，人脉资源丰富
-- 适合从事销售、市场、公关类工作
-- 具有创业潜质，不满足于稳定工作
-
-**适合行业**: 金融投资、市场营销、娱乐传媒、餐饮服务
-**事业评分 Career Rating**: ⭐⭐⭐⭐ (4/5)
-
----
-
-## 财帛宫分析 · Wealth Palace Analysis
-
-**财帛宫主星**: 天同（化忌）
-**辅星**: 擎羊
-**格局判定**: 天同化忌受擎羊冲，财运起伏较大
-
-### 财运特征
-
-天同星入财帛宫：
-- 正财为主，适合稳定收入
-- 化忌守财帛，理财需谨慎
-- 擎羊同宫，不宜投机冒险
-
-**财运评分 Wealth Rating**: ⭐⭐⭐ (3/5)
-
----
-
-## 夫妻宫分析 · Marriage Palace Analysis
-
-**夫妻宫主星**: 太阳（化禄）
-**辅星**: 文曲、天魁
-**格局判定**: 太阳化禄入夫妻，配偶贵人运旺
-
-### 婚姻特征
-
-太阳星入夫妻宫：
-- 配偶性格开朗，有领导力
-- 化禄加持，婚姻运势良好
-- 文曲同宫，配偶有文艺气质
-
-**婚姻评分 Marriage Rating**: ⭐⭐⭐⭐ (4/5)
-
----
-
-# ${currentYear}流年运势 · Annual Fortune ${currentYear}
-
-**流年宫位**: 命宫（流年走到本命命宫）
-**流年四化**: 破军化禄、巨门化权、太阴化科、贪狼化忌
-**整体运势评分 Overall Rating**: ⭐⭐⭐⭐ (4/5)
-
----
-
-## 流年总览 · Annual Overview
-
-${currentYear}年流年走到本命命宫，为人生重要节点年份。流年四化分布：
-
-| 四化 Transformation | 星曜 Star | 影响 Impact |
-|---------------------|-----------|-------------|
-| 化禄 Lu (Wealth) | 破军 Po Jun | 破旧立新，有意外之财 |
-| 化权 Quan (Power) | 巨门 Ju Men | 口才有助事业，注意是非 |
-| 化科 Ke (Fame) | 太阴 Tai Yin | 女贵人相助，名声提升 |
-| 化忌 Ji (Obstacle) | 贪狼 Tan Lang | 感情桃花需谨慎 |
-
----
-
-## 流月分析 · Monthly Breakdown
-
-| 月份 Month | 流日宫位 Palace | 运势 Fortune | 关键事项 Key Events |
-|------------|----------------|--------------|---------------------|
-| 1月 Jan | 兄弟宫 | ⭐⭐⭐ | 人际关系活跃，合作机会 |
-| 2月 Feb | 夫妻宫 | ⭐⭐⭐⭐ | 感情运势旺，已婚者和谐 |
-| 3月 Mar | 子女宫 | ⭐⭐⭐ | 创意灵感强，注意子女健康 |
-| 4月 Apr | 财帛宫 | ⭐⭐⭐ | 财运平稳，不宜大额投资 |
-| 5月 May | 疾厄宫 | ⭐⭐ | **注意健康**，避免劳累 |
-| 6月 Jun | 迁移宫 | ⭐⭐⭐⭐ | 出行有利，贵人相遇 |
-| 7月 Jul | 仆役宫 | ⭐⭐⭐ | 朋友助力，提防小人 |
-| 8月 Aug | 官禄宫 | ⭐⭐⭐⭐⭐ | **最佳月份** 事业突破 |
-| 9月 Sep | 田宅宫 | ⭐⭐⭐ | 房产事宜，家庭和谐 |
-| 10月 Oct | 福德宫 | ⭐⭐⭐⭐ | 精神愉悦，贵人相助 |
-| 11月 Nov | 父母宫 | ⭐⭐⭐ | 长辈关系，家庭事务 |
-| 12月 Dec | 命宫 | ⭐⭐⭐⭐⭐ | **年度收尾** 自我提升 |
-
-**最佳月份 Best Months**: 8月、12月
-**需谨慎月份 Caution Months**: 5月
-
----
-
-## 流年吉元素 · Lucky Elements for ${currentYear}
-
-### 幸运色 Lucky Colors
-
-| 颜色 Color | 五行属性 Element | 使用建议 Usage |
-|-----------|-----------------|----------------|
-| 紫色 Purple | 火 Fire | 重要场合穿着 |
-| 绿色 Green | 木 Wood | 日常搭配 |
-| 金色 Gold | 金 Metal | 财务相关 |
-
-### 幸运数字 Lucky Numbers
-
-**主幸运数字**: **1、6**
-**次幸运数字**: **3、8**
-
-### 幸运方位 Lucky Directions
-
-| 方位 Direction | 适合事项 Suitable For |
-|---------------|----------------------|
-| 正南 South | 事业、名声 |
-| 东南 Southeast | 财运、投资 |
-| 正东 East | 健康、学业 |
-
-### 幸运五行 Lucky Element
-
-**${currentYear}年幸运五行**: **木 Wood**
-
----
-
-## 流年凶象 · Caution Areas for ${currentYear}
-
-### 煞曜影响
-
-| 煞曜 Sha Star | 所在宫位 Palace | 影响领域 Impact Area |
-|---------------|----------------|---------------------|
-| 擎羊 Qing Yang | 财帛宫 | 财务损失风险 |
-| 陀罗 Tuo Luo | 福德宫 | 精神压力 |
-| 火星 Fire Star | 疾厄宫 | 健康需注意 |
-| 铃星 Bell Star | 迁移宫 | 出行安全 |
-
-### 需规避事项
-
-1. **5月** - 疾厄宫受火星冲，避免过度劳累
-2. **大额投资** - 财帛宫擎羊，不宜冒险投机
-3. **口舌是非** - 巨门化权，言语需谨慎
-
----
-
-## 刑冲克害分析 · Adverse Aspects
-
-### 命理刑冲
-
-| 类型 Type | 具体内容 Details | 化解方法 Remedy |
-|-----------|-----------------|-----------------|
-| 命宫自刑 | 贪狼化忌冲命 | 佩戴黑曜石饰品 |
-| 财帛受冲 | 擎羊入财帛 | 财不露白，分散投资 |
-| 夫妻无冲 | 太阳化禄护持 | 维持现状即可 |
-
----
-
-## 趋吉避凶 · Auspicious Guidance
-
-### 专业建议
-
-1. **事业**: 8月官禄宫大限叠加流年，事业有重大突破机会
-2. **财运**: 保持稳健，避免投机，正财为主
-3. **感情**: 贪狼化忌影响，桃花需谨慎甄别
-4. **健康**: 5月特别注意，避免熬夜劳累
-
-### 日常趋吉
-
-- 办公桌朝向正南方
-- 多穿紫色、绿色服饰
-- 每月初一、十五焚香祈福
-- 避免在冲煞方位做重大决定
-
----
-
-## 专业总结 · Professional Summary
-
-本命盘以${input.mingGong}为命宫主星，${input.wuXingJu}。四柱${input.siZhu.year}年${input.siZhu.month}月${input.siZhu.day}日${input.siZhu.hour}时，生肖${input.chineseZodiac}。
-
-**命盘格局**: 紫府同临格，主一生贵人多助，事业有成。
-**当前运势**: 大限走官禄宫，${currentYear}流年归命宫，为人生重要转折期。
-**关键年份**: ${currentYear}年、${currentYear + 4}年
-
----
-
-*本报告基于紫微斗数古典理论进行专业分析，仅供参考。*
-*This reading is based on classical Zi Wei Dou Shu theory and is for reference only.*
-`;
-
   return {
     coreIdentity,
-    report,
+    report: `核心身份：${coreIdentity}
+
+## 命格总论
+- 命宫主轴：${input.mingGong}坐守 → 命主行事果断，遇到关键节点时更愿意主动判断，不喜欢长期停在模糊状态。
+- 五行局：${input.wuXingJu} → 做事偏向稳扎稳打，适合把经验沉淀成方法、流程与长期资产。
+- 通俗解释：这张命盘的核心，不是短期爆发，而是把判断力、执行力与节奏感慢慢做成优势。
+
+## 人生主要方向
+${buildChineseMockMainDirections(stage)}
+
+## 当前大限
+- 当前十年大运的主题偏向“重整与定盘” → 不是单纯求快，而是把资源、方向与身份重新排整齐。
+- 主要机遇：把过去经验升级成更稳定的角色、收入结构和外部信誉。
+- 主要风险：事情很多却主次不清，最后忙碌感很强，成果却不集中。
+
+## 流年运势
+- ${currentYear}年重点在“先定方向，再放大结果” → 适合先聚焦一到两个主目标，再持续推进，不宜分散战线。
+- 关键窗口一：${currentYear}年4月18日到4月30日 → 适合推进方案、争取资源、发起关键沟通。
+- 关键窗口二：${currentYear}年8月12日到8月28日 → 适合做合作敲定、项目定价、现金流安排。
+- 关键窗口三：${currentYear}年11月6日到11月20日 → 适合复盘、止损、整理年底前必须完成的责任。
+
+## 六亲与健康
+${buildChineseMockFamilyHealth(stage)}
+
+## 幸运元素
+- 幸运色：深绿、金色、墨灰。
+- 幸运数字：1、6、8。
+- 幸运方位：正南、东南。
+- 可执行建议：本月先砍掉一项低价值事务；两周内固定一个高质量工作节奏；在${currentYear}年8月28日前完成一次资产与现金流复盘。`,
   };
 }
 

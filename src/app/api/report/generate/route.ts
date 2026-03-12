@@ -14,6 +14,8 @@ import {
   GenerateReportInput,
 } from '@/lib/llm';
 import { prisma } from '@/lib/db';
+import { normalizeLocale } from '@/lib/i18n/config';
+import { resolveStoredReportLocale, setStoredReportLocale } from '@/lib/report-preferences';
 import { createTempReport } from '@/lib/temp-report-store';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -27,6 +29,7 @@ const CACHE_HOURS = 24; // 缓存有效期（小时）
 interface GenerateRequest {
   email: string;
   gender: 'male' | 'female';
+  locale?: string;
   country?: string; // ISO country code: CN, US, SG, MY, etc.
   birthDate: string; // YYYY-MM-DD
   birthTime: number; // 0-23
@@ -76,7 +79,7 @@ function calculateLongitudeFromTimeDiff(
 /**
  * 检查是否有缓存的报告（24小时内相同信息）
  */
-async function getCachedReport(body: GenerateRequest): Promise<{
+async function getCachedReport(body: GenerateRequest, locale: 'en' | 'zh'): Promise<{
   found: boolean;
   report?: {
     id: string;
@@ -88,7 +91,7 @@ async function getCachedReport(body: GenerateRequest): Promise<{
   try {
     const cacheTime = new Date(Date.now() - CACHE_HOURS * 60 * 60 * 1000);
 
-    const cached = await prisma.report.findFirst({
+    const cachedReports = await prisma.report.findMany({
       where: {
         email: body.email,
         birthDate: body.birthDate,
@@ -101,7 +104,12 @@ async function getCachedReport(body: GenerateRequest): Promise<{
       orderBy: {
         createdAt: 'desc',
       },
+      take: 10,
     });
+
+    const cached = cachedReports.find(
+      (report) => resolveStoredReportLocale(report, locale) === locale
+    );
 
     if (cached) {
       return {
@@ -126,6 +134,7 @@ async function getCachedReport(body: GenerateRequest): Promise<{
 export async function POST(request: NextRequest) {
   try {
     const body: GenerateRequest = await request.json();
+    const locale = normalizeLocale(body.locale);
 
     // 1. 验证输入
     const validationError = validateInput(body);
@@ -137,7 +146,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 检查缓存（24小时内相同信息免费复用）
-    const cached = await getCachedReport(body);
+    const cached = await getCachedReport(body, locale);
     if (cached.found && cached.report) {
       console.log('Returning cached report for:', body.email);
       const rawAstrolabe = JSON.parse(cached.report.rawAstrolabe);
@@ -186,12 +195,15 @@ export async function POST(request: NextRequest) {
       siZhu: astrolabe.parsed.siZhu,
       palaces: astrolabe.parsed.palaces,
       rawAstrolabe: astrolabe.raw,
+      locale,
     };
 
     // 6. 生成报告（暂时跳过豆包API，只生成排盘）
     // 用户可以在排盘页面选择是否获取AI解读
     const reportResult = {
-      coreIdentity: `命宫主星：${llmInput.mingGong}，五行属${llmInput.wuXingJu}`,
+      coreIdentity: locale === 'zh'
+        ? `命宫主星：${llmInput.mingGong}，五行属${llmInput.wuXingJu}`
+        : `Life palace stars: ${llmInput.mingGong}; five-element pattern: ${llmInput.wuXingJu}.`,
       report: '', // 暂不生成AI报告
     };
 
@@ -207,6 +219,7 @@ export async function POST(request: NextRequest) {
           birthTime: body.birthTime,
           birthCity: `经度${longitude.toFixed(1)}°`,
           longitude,
+          parsedData: setStoredReportLocale(null, locale),
           rawAstrolabe: JSON.stringify(astrolabe.raw),
           aiReport: reportResult.report,
           coreIdentity: reportResult.coreIdentity,
@@ -225,6 +238,7 @@ export async function POST(request: NextRequest) {
         birthCity: `经度${longitude.toFixed(1)}°`,
         longitude,
         latitude: 0,
+        parsedData: setStoredReportLocale(null, locale),
         rawAstrolabe: JSON.stringify(astrolabe.raw),
         aiReport: reportResult.report,
         coreIdentity: reportResult.coreIdentity,

@@ -26,6 +26,7 @@ export async function GET(
       success: true,
       report: {
         id: report.id,
+        locale: report.locale,
         email: report.email,
         gender: report.gender,
         birthDate: report.birthDate,

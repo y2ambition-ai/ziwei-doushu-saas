@@ -38,6 +38,7 @@ interface ReportData {
   birthTime: number;
   birthCity: string;
   longitude?: number;
+  locale: Locale;
   coreIdentity: string;
   aiReport: string;
   rawAstrolabe: RawAstrolabe | null;
@@ -52,6 +53,36 @@ interface ReportContentProps {
 }
 
 const pendingInitialGenerations = new Set<string>();
+
+function sanitizeCoreIdentity(value: string | null | undefined, locale: Locale): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value
+    .trim()
+    .replace(/^Core Identity:\s*/i, '')
+    .replace(/^核心身份[:：]\s*/, '')
+    .trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const invalidPatterns = locale === 'zh'
+    ? [/^#{1,3}\s/, /^\d+[.)]\s/, /^以下为/, /^命格总论/, /^Core Chart Identity/i]
+    : [/^#{1,3}\s/, /^\d+[.)]\s/, /^Below is /i, /^Based on /i, /^Core Chart Identity$/i, /^命格总论/];
+
+  if (invalidPatterns.some((pattern) => pattern.test(trimmed))) {
+    return null;
+  }
+
+  if (trimmed.includes('，，')) {
+    return null;
+  }
+
+  return trimmed;
+}
 
 // ─── Spring Animation Config ───────────────────────────────────────────────────
 
@@ -191,6 +222,8 @@ function renderMarkdown(text: string) {
   let cleanedText = text.replace(/（报告全文共\s*\d+\s*字）\s*$/g, '');
   cleanedText = cleanedText.replace(/\(全文共\s*\d+\s*字\)\s*$/g, '');
   cleanedText = cleanedText.replace(/共\s*\d+\s*字\s*$/g, '');
+  cleanedText = cleanedText.replace(/^Core Identity:\s*.+\n*/i, '');
+  cleanedText = cleanedText.replace(/^核心身份[:：]\s*.+\n*/m, '');
 
   return cleanedText.split('\n').map((line, i) => {
 
@@ -417,14 +450,17 @@ export default function ReportContent({ locale, report }: ReportContentProps) {
 
   // 动态计算 coreIdentity（如果存储的是旧错误数据）
   const computeCoreIdentity = () => {
-    // 检查存储的 coreIdentity 是否有效
-    if (report.coreIdentity && !report.coreIdentity.includes('，，') && !report.coreIdentity.includes('年月日')) {
-      return report.coreIdentity;
+    const storedCoreIdentity = sanitizeCoreIdentity(report.coreIdentity, locale);
+
+    if (storedCoreIdentity) {
+      return storedCoreIdentity;
     }
 
     // 从 rawAstrolabe 重新计算
     const astrolabe = report.rawAstrolabe;
-    if (!astrolabe) return report.coreIdentity;
+    if (!astrolabe) {
+      return locale === 'zh' ? '命盘摘要生成中。' : 'Chart summary is being prepared.';
+    }
 
     const mingGong = astrolabe.palaces?.find(p => p.name === '命宫');
     const majorStars = mingGong?.majorStars?.map(s => s.name).join('·') || '空宫';
@@ -449,7 +485,7 @@ export default function ReportContent({ locale, report }: ReportContentProps) {
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [retryAfter, setRetryAfter] = useState(0);
-  const generationKey = `${locale}:${report.id}`;
+  const generationKey = `${report.locale}:${report.id}`;
 
   useEffect(() => {
     if (!canGenerate || (report.aiReport && report.aiReport.length >= 100)) {
@@ -488,7 +524,7 @@ export default function ReportContent({ locale, report }: ReportContentProps) {
       const response = await fetch('/api/report/ai-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reportId: report.id, locale }),
+        body: JSON.stringify({ reportId: report.id, locale: report.locale }),
       });
 
       const data = await response.json();
@@ -544,7 +580,7 @@ export default function ReportContent({ locale, report }: ReportContentProps) {
             </span>
           </Link>
           <div className="flex items-center gap-3">
-            <LanguageSwitcher locale={locale} />
+            <LanguageSwitcher locale={locale} locked />
             <span className="text-[#1A0F05]/35 text-[10px] tracking-wide">
               {new Date(report.createdAt).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US')}
             </span>

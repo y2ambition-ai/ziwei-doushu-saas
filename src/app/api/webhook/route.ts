@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { normalizeLocale } from '@/lib/i18n/config';
 import { generateReport, generateMockReport, GenerateReportInput } from '@/lib/llm';
 import { captureApiError, capturePaymentError } from '@/lib/monitoring';
+import { resolveStoredReportLocale, setStoredReportLocale } from '@/lib/report-preferences';
 import { verifyWebhookSignature } from '@/lib/stripe';
 import { generateAstrolabe } from '@/lib/ziwei/wrapper';
 
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const metadata = session.metadata;
   const reportId = metadata?.reportId;
-  const locale = normalizeLocale(metadata?.locale);
+  const fallbackLocale = normalizeLocale(metadata?.locale);
 
   if (!reportId) {
     console.error('No reportId in checkout session metadata');
@@ -77,11 +78,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   const paidAt = existingReport.paidAt || new Date();
+  const locale = resolveStoredReportLocale(existingReport, fallbackLocale);
+  const parsedData = setStoredReportLocale(existingReport.parsedData, locale);
 
   if (existingReport.aiReport && existingReport.aiReport.length > 100) {
     await prisma.report.update({
       where: { id: reportId },
       data: {
+        parsedData,
         paidAt,
         completedAt: existingReport.completedAt || new Date(),
       },
@@ -102,6 +106,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   await prisma.report.update({
     where: { id: reportId },
     data: {
+      parsedData,
       paidAt,
       rawAstrolabe: existingReport.rawAstrolabe || JSON.stringify(astrolabe.raw),
     },
@@ -131,6 +136,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     data: {
       coreIdentity: reportResult.coreIdentity,
       aiReport: reportResult.report,
+      parsedData,
       paidAt,
       completedAt: new Date(),
       rawAstrolabe: existingReport.rawAstrolabe || JSON.stringify(astrolabe.raw),

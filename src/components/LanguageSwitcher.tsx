@@ -10,12 +10,14 @@ interface LanguageSwitcherProps {
   locale: Locale;
   label?: string;
   className?: string;
+  locked?: boolean;
 }
 
 export function LanguageSwitcher({
   locale,
   label,
   className = '',
+  locked = false,
 }: LanguageSwitcherProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -41,11 +43,19 @@ export function LanguageSwitcher({
             <button
               key={item.locale}
               type="button"
-              onClick={() => router.push(item.href)}
+              onClick={() => {
+                if (!locked || active) {
+                  router.push(item.href);
+                }
+              }}
+              disabled={locked && !active}
+              aria-disabled={locked && !active}
               className={`rounded-full px-3 py-1.5 text-[11px] font-medium tracking-[0.18em] transition-colors ${
                 active
                   ? 'bg-[#1A0F05] text-[#F7F3EC]'
-                  : 'text-[#6D5437] hover:bg-[#B8925A]/10'
+                  : locked
+                    ? 'cursor-not-allowed text-[#6D5437]/35'
+                    : 'text-[#6D5437] hover:bg-[#B8925A]/10'
               }`}
             >
               {item.locale === 'en' ? 'EN' : '中文'}

@@ -16,6 +16,7 @@ import { prisma } from '@/lib/db';
 import { normalizeLocale } from '@/lib/i18n/config';
 import { generateAstrolabe } from '@/lib/ziwei/wrapper';
 import { captureAIGenerationError, captureApiError } from '@/lib/monitoring';
+import { resolveStoredReportLocale, setStoredReportLocale } from '@/lib/report-preferences';
 import { getTempReport, updateTempReport } from '@/lib/temp-report-store';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -32,6 +33,7 @@ interface StoredReport {
   birthCity: string;
   longitude: number;
   latitude: number;
+  parsedData: string | null;
   coreIdentity: string | null;
   aiReport: string | null;
   apiCalledAt: Date | null;
@@ -42,6 +44,7 @@ interface StoredReport {
 interface StoredReportUpdate {
   apiCalledAt?: Date;
   apiRetryCount?: number;
+  parsedData?: string;
   aiReport?: string;
   coreIdentity?: string;
   completedAt?: Date;
@@ -106,7 +109,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { reportId, locale: requestedLocale } = body;
-    const locale = normalizeLocale(requestedLocale);
+    const fallbackLocale = normalizeLocale(requestedLocale);
 
     if (!reportId) {
       return NextResponse.json(
@@ -123,6 +126,13 @@ export async function POST(request: NextRequest) {
         { error: '报告不存在' },
         { status: 404 }
       );
+    }
+
+    const locale = resolveStoredReportLocale(report, fallbackLocale);
+    const parsedData = setStoredReportLocale(report.parsedData, locale);
+
+    if (report.parsedData !== parsedData) {
+      await updateStoredReport(reportId, { parsedData }, useTempStore);
     }
 
     const paymentConfigured = Boolean(
@@ -146,6 +156,7 @@ export async function POST(request: NextRequest) {
         success: true,
         status: 'completed',
         cached: true,
+        locale,
         coreIdentity: report.coreIdentity,
         report: report.aiReport,
       });
@@ -236,11 +247,13 @@ export async function POST(request: NextRequest) {
 
     // 8. 更新数据库
     const updateData: {
+      parsedData: string;
       aiReport: string;
       coreIdentity: string;
       completedAt: Date;
       paidAt?: Date;
     } = {
+      parsedData,
       aiReport: reportResult.report,
       coreIdentity: reportResult.coreIdentity,
       completedAt: new Date(),
@@ -257,6 +270,7 @@ export async function POST(request: NextRequest) {
       success: true,
       status: 'completed',
       cached: false,
+      locale,
       coreIdentity: reportResult.coreIdentity,
       report: reportResult.report,
     });
