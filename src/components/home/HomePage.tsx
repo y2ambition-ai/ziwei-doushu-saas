@@ -120,8 +120,8 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
   const home = dictionary.home;
   const heroTitleLines =
     locale === 'zh'
-      ? [home.heroTitle, '更是一份看清', '人生转机的东方指引。']
-      : ['More than a chart,', 'it is an Eastern reading', 'for life turning points.'];
+      ? ['这不只是一张命盘，', '更是一份看清人生转机的东方指引。']
+      : ['More than a chart,', 'an Eastern reading for life turning points.'];
   const heroHighlights =
     locale === 'zh'
       ? ['30+ 道家传承脉络', '完整十二宫命盘', '7 天内可重复查看']
@@ -242,17 +242,16 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
         {/* Viewport 1: Hero */}
         <section className="relative flex min-h-[calc(100vh-80px)] flex-col items-center justify-center px-6 md:px-10 overflow-hidden">
           <div className="relative z-10 w-full max-w-[1000px] mx-auto grid md:grid-cols-2 gap-12 items-center">
-            <div className="flex flex-col">
+            <div className="flex flex-col justify-center">
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`font-display text-[#1a0f05] leading-tight ${
-                  locale === 'zh' ? 'text-4xl md:text-5xl' : 'text-3xl md:text-4xl'
+                className={`font-display text-[#1a0f05] leading-snug ${
+                  locale === 'zh' ? 'text-3xl md:text-4xl' : 'text-2xl md:text-3xl'
                 }`}
               >
-                <span className="block mb-4 text-[#1a0f05]">{heroTitleLines[0]}</span>   
-                <span className="block mb-2 text-[#b8925a]">{heroTitleLines[1]}</span>
-                <span className="block text-[#b8925a]">{heroTitleLines[2]}</span>   
+                <span className="block mb-3 text-[#1a0f05]">{heroTitleLines[0]}</span>
+                <span className="block text-[#b8925a]">{heroTitleLines[1]}</span>
               </motion.h1>
 
               <motion.p
@@ -268,22 +267,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="mt-10"
-              >
-                <button
-                  type="button"
-                  onClick={() => scrollToId('reading')}
-                  className="group relative inline-flex items-center justify-center rounded-full bg-[#1a0f05] px-8 py-4 text-sm uppercase tracking-[0.2em] text-[#f7f3ec] transition-transform hover:-translate-y-1 shadow-lg"
-                >
-                  {home.primaryCta}
-                </button>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="mt-12 flex flex-col gap-4 text-[12px] uppercase tracking-[0.15em] text-[#6d5437]"
+                className="mt-12 flex flex-col gap-5 text-[12px] uppercase tracking-[0.15em] text-[#6d5437]"
               >
                 {heroHighlights.map((item) => (
                   <div key={item} className="flex items-center gap-3">
@@ -298,19 +282,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
               <HeroSigilStage locale={locale} />
             </div>
           </div>
-
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8, duration: 1 }}
-            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer"
-            onClick={() => scrollToId('reading')}
-          >
-            <span className="text-[10px] uppercase tracking-widest text-[#b8925a]">Scroll</span>
-            <div className="w-[1px] h-12 bg-gradient-to-b from-[#b8925a] to-transparent"></div>
-          </motion.div>
         </section>
-
         {/* Viewport 2: Form */}
         <section id="reading" className="relative flex min-h-screen flex-col justify-center px-6 py-20 md:px-10">
           <div className="mx-auto grid w-full max-w-[1200px] gap-12 lg:grid-cols-[1fr_1.2fr] items-center">
