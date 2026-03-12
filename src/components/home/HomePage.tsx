@@ -334,7 +334,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
                       value={form.email}
                       placeholder={home.fields.emailPlaceholder}
                       onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                      className="w-full rounded-xl border border-[#b8925a]/20 bg-white px-4 py-3 text-[#1a0f05] outline-none transition focus:border-[#b8925a] focus:ring-1 focus:ring-[#b8925a]"
+                      className="w-full rounded-xl border border-[#b8925a]/20 bg-white/80 px-4 py-3 text-[#1a0f05] outline-none transition focus:border-[#b8925a] focus:ring-1 focus:ring-[#b8925a]"
                     />
                     {validationErrors.email ? <p className="text-[11px] text-red-600">{validationErrors.email}</p> : null}
                   </div>
@@ -344,7 +344,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
                     <select
                       value={form.gender}
                       onChange={(event) => setForm((current) => ({ ...current, gender: event.target.value }))}
-                      className="w-full rounded-xl border border-[#b8925a]/20 bg-white px-4 py-3 text-[#1a0f05] outline-none transition focus:border-[#b8925a] focus:ring-1 focus:ring-[#b8925a] appearance-none"
+                      className="w-full rounded-xl border border-[#b8925a]/20 bg-white/80 px-4 py-3 text-[#1a0f05] outline-none transition focus:border-[#b8925a] focus:ring-1 focus:ring-[#b8925a] appearance-none"
                     >
                       <option value="">--</option>
                       <option value="male">{home.fields.male}</option>
@@ -361,7 +361,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
                       type="date"
                       value={form.birthDate}
                       onChange={(event) => setForm((current) => ({ ...current, birthDate: event.target.value }))}
-                      className="w-full rounded-xl border border-[#b8925a]/20 bg-white px-4 py-3 text-[#1a0f05] outline-none transition focus:border-[#b8925a] focus:ring-1 focus:ring-[#b8925a]"
+                      className="w-full rounded-xl border border-[#b8925a]/20 bg-white/80 px-4 py-3 text-[#1a0f05] outline-none transition focus:border-[#b8925a] focus:ring-1 focus:ring-[#b8925a]"
                     />
                     {validationErrors.birthDate ? <p className="text-[11px] text-red-600">{validationErrors.birthDate}</p> : null}
                   </div>
@@ -371,7 +371,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
                     <select
                       value={form.shichen}
                       onChange={(event) => setForm((current) => ({ ...current, shichen: event.target.value }))}
-                      className="w-full rounded-xl border border-[#b8925a]/20 bg-white px-4 py-3 text-[#1a0f05] outline-none transition focus:border-[#b8925a] focus:ring-1 focus:ring-[#b8925a] appearance-none"
+                      className="w-full rounded-xl border border-[#b8925a]/20 bg-white/80 px-4 py-3 text-[#1a0f05] outline-none transition focus:border-[#b8925a] focus:ring-1 focus:ring-[#b8925a] appearance-none"
                     >
                       <option value="">--</option>
                       {shichenOptions.map((item) => (
@@ -384,7 +384,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[#b8925a]/20 bg-[#fdfaf6] p-6 mt-2">
+                <div className="rounded-2xl border border-[#b8925a]/20 bg-[#fdfaf6]/60 p-6 mt-2">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-[#b8925a]">📍</span>
                     <p className="text-[11px] uppercase tracking-[0.2em] text-[#1a0f05] font-bold">{home.fields.birthplaceTime}</p>
