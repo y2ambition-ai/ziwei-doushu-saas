@@ -62,7 +62,7 @@ function HeroSigilStage({
   locale: Locale;
 }) {
   return (
-    <div className="mx-auto w-full max-w-[360px] md:max-w-[400px]">
+    <div className="mx-auto w-full max-w-[440px] md:max-w-[500px]">
       <div className="paper-panel relative aspect-square w-full overflow-hidden rounded-[28px] p-6 md:p-7">
         <motion.div
           aria-hidden="true"
@@ -266,15 +266,32 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="mt-12 flex flex-col gap-5 text-[12px] uppercase tracking-[0.15em] text-[#6d5437]"
+                transition={{ delay: 0.3 }}
+                className="mt-16 flex flex-col gap-8"
               >
-                {heroHighlights.map((item) => (
-                  <div key={item} className="flex items-center gap-3">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-3 text-sm font-bold tracking-[0.1em] text-[#1a0f05]">
                     <span className="text-[#b8925a]">✦</span>
-                    {item}
+                    {locale === 'zh' ? '30+ 道家传承脉络' : '30+ lineage source notes'}
                   </div>
-                ))}
+                  <p className="text-sm text-[#6d5437] pl-6">
+                    {locale === 'zh' 
+                      ? '汇集三十余位道家传承老师的判断经验与古籍脉络，摒弃泛泛而谈的性格套话。' 
+                      : 'Distilled from over 30 Taoist lineage teachers and classical source notes.'}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-3 text-sm font-bold tracking-[0.1em] text-[#1a0f05]">
+                    <span className="text-[#b8925a]">✦</span>
+                    {locale === 'zh' ? '完整十二宫命盘' : 'Full twelve-palace chart'}
+                  </div>
+                  <p className="text-sm text-[#6d5437] pl-6">
+                    {locale === 'zh'
+                      ? '系统呈现完整的紫微斗数排盘，让你先看清格局与主星落点，再深入探索关键转折。'
+                      : 'We render the complete structural layout of your chart before any deep-dive readings.'}
+                  </p>
+                </div>
               </motion.div>
             </div>
 
