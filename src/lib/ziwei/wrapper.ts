@@ -1,16 +1,25 @@
 /**
- * iztro 排盘引擎封装
- * Wrapper for iztro astrology library
+ * Wrapper for the iztro chart engine.
  */
 
 import { astro } from 'iztro';
 import { calculateTrueSolarTime } from '../solar-time';
+import {
+  RawDates,
+  extractSiZhu,
+  formatLunarDate,
+  localizeChineseZodiac,
+  localizeEarthlyBranch,
+  localizeGender,
+  localizePalaceName,
+  normalizeEarthlyBranch,
+} from '../i18n/chart';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface AstrolabeInput {
   birthDate: string;  // YYYY-MM-DD
-  birthTime: number;  // 0-23 小时
+  birthTime: number;  // 0-23
   birthMinute: number; // 0-59
   gender: 'male' | 'female';
   longitude: number;
@@ -25,10 +34,12 @@ export interface PalaceData {
   minorStars: string[];
   mutagen: string[];
   isEmpty: boolean;
+  isBodyPalace?: boolean;
+  isOriginalPalace?: boolean;
 }
 
 export interface ParsedAstrolabe {
-  // 核心信息
+  // Core info
   mingGong: PalaceData;
   shenGong: PalaceData;
   wuXingJu: string;
@@ -39,14 +50,14 @@ export interface ParsedAstrolabe {
     hour: string;
   };
 
-  // 命盘特征
+  // Chart traits
   chineseZodiac: string;
   zodiac: string;
 
-  // 十二宫数据
+  // Twelve palaces
   palaces: PalaceData[];
 
-  // 真太阳时信息
+  // True solar time
   solarTime: {
     shichen: number;
     shichenName: string;
@@ -63,28 +74,20 @@ export interface AstrolabeResult {
 // ─── Main Function ─────────────────────────────────────────────────────────────
 
 export function generateAstrolabe(input: AstrolabeInput): AstrolabeResult {
-  // 1. 解析日期时间
   const dateTimeStr = `${input.birthDate}T${String(input.birthTime).padStart(2, '0')}:${String(input.birthMinute).padStart(2, '0')}:00`;
   const localTime = new Date(dateTimeStr);
 
-  // 2. 计算真太阳时
   const solarResult = calculateTrueSolarTime(localTime, input.longitude);
 
-  // 3. 转换性别格式
-  const gender = input.gender === 'male' ? '男' : '女';
-
-  // 4. 调用 iztro 排盘
-  // bySolar 参数: (date, hour, gender, isLeapMonth, language)
-  // hour: 0-11 对应子时到亥时
+  // bySolar(date, hour, gender, isLeapMonth, language)
   const astrolabe = astro.bySolar(
     input.birthDate,
     solarResult.shichen,
-    gender,
+    input.gender,
     true,
-    'zh-CN'
+    'en-US'
   );
 
-  // 5. 解析结果
   const parsed = parseAstrolabe(astrolabe, solarResult);
 
   return {
@@ -98,36 +101,26 @@ export function generateAstrolabe(input: AstrolabeInput): AstrolabeResult {
 
 function parseAstrolabe(raw: unknown, solarResult: { shichen: number; shichenName: string; adjustment: number }): ParsedAstrolabe {
   const data = raw as Record<string, unknown>;
+  const rawDates = data?.rawDates as RawDates | undefined;
 
-  // 提取基本信息
-  const chineseZodiac = String(data?.chineseZodiac || '');
-  const zodiac = String(data?.zodiac || '');
-  const fiveElementClass = String(data?.fiveElementClass || '');
+  const chineseZodiac = String(data?.chineseZodiac || data?.zodiac || '');
+  const zodiac = String(data?.sign || data?.zodiac || '');
+  const fiveElementsClass = String(data?.fiveElementsClass || data?.fiveElementClass || '');
   const earthlyBranchOfSoulPalace = String(data?.earthlyBranchOfSoulPalace || '');
   const earthlyBranchOfBodyPalace = String(data?.earthlyBranchOfBodyPalace || '');
 
-  // 提取四柱 - 从 chineseDate 字段获取（格式："庚午 壬午 辛亥 甲午"）
-  const chineseDate = String(data?.chineseDate || '');
-  const dateParts = chineseDate.split(' ');
-  const siZhu = {
-    year: dateParts[0] || '',
-    month: dateParts[1] || '',
-    day: dateParts[2] || '',
-    hour: dateParts[3] || '',
-  };
+  const siZhu = extractSiZhu(rawDates, String(data?.chineseDate || ''));
 
-  // 提取十二宫
   const rawPalaces = (data?.palaces || []) as unknown[];
   const palaces: PalaceData[] = rawPalaces.map((p: unknown) => parsePalace(p as Record<string, unknown>));
 
-  // 找到命宫和身宫
-  const mingGong = palaces.find(p => p.name === '命宫') || createEmptyPalace('命宫');
-  const shenGong = palaces.find(p => p.name === '身宫') || createEmptyPalace('身宫');
+  const mingGong = resolveLifePalace(palaces, earthlyBranchOfSoulPalace);
+  const shenGong = resolveBodyPalace(palaces, earthlyBranchOfBodyPalace);
 
   return {
     mingGong,
     shenGong,
-    wuXingJu: fiveElementClass,
+    wuXingJu: fiveElementsClass,
     siZhu,
     chineseZodiac,
     zodiac,
@@ -143,34 +136,35 @@ function parseAstrolabe(raw: unknown, solarResult: { shichen: number; shichenNam
 function parsePalace(raw: Record<string, unknown>): PalaceData {
   const name = String(raw?.name || '');
   const earthlyBranch = String(raw?.earthlyBranch || '');
+  const isBodyPalace = Boolean(raw?.isBodyPalace);
+  const isOriginalPalace = Boolean(raw?.isOriginalPalace);
 
-  // 提取主星
   const majorStars: string[] = [];
   const rawMajorStars = raw?.majorStars as unknown[];
   if (Array.isArray(rawMajorStars)) {
     rawMajorStars.forEach((star: unknown) => {
       const starData = star as Record<string, unknown>;
       const starName = String(starData?.name || '');
-      if (starName && starName !== '空') {
+      const normalized = starName.toLowerCase();
+      if (starName && starName !== '\u7a7a' && normalized !== 'void' && normalized !== 'empty') {
         majorStars.push(starName);
       }
     });
   }
 
-  // 提取辅星
   const minorStars: string[] = [];
   const rawMinorStars = raw?.minorStars as unknown[];
   if (Array.isArray(rawMinorStars)) {
     rawMinorStars.forEach((star: unknown) => {
       const starData = star as Record<string, unknown>;
       const starName = String(starData?.name || '');
-      if (starName && starName !== '空') {
+      const normalized = starName.toLowerCase();
+      if (starName && starName !== '\u7a7a' && normalized !== 'void' && normalized !== 'empty') {
         minorStars.push(starName);
       }
     });
   }
 
-  // 提取四化
   const mutagen: string[] = [];
   const rawMutagen = raw?.mutagen as unknown[];
   if (Array.isArray(rawMutagen)) {
@@ -190,7 +184,72 @@ function parsePalace(raw: Record<string, unknown>): PalaceData {
     minorStars,
     mutagen,
     isEmpty: majorStars.length === 0,
+    isBodyPalace,
+    isOriginalPalace,
   };
+}
+
+function normalizePalaceName(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  if (/[\u4e00-\u9fff]/.test(trimmed)) {
+    return trimmed.replace(/\u5bab$/, '');
+  }
+
+  return trimmed.toLowerCase().replace(/palace/g, '').trim();
+}
+
+function resolveLifePalace(palaces: PalaceData[], branchHint?: string): PalaceData {
+  const direct = palaces.find((palace) => palace.isOriginalPalace);
+  if (direct) {
+    return direct;
+  }
+
+  const byName = palaces.find((palace) => {
+    const normalized = normalizePalaceName(palace.name);
+    return normalized === 'soul' || normalized === 'life' || normalized === '\u547d';
+  });
+  if (byName) {
+    return byName;
+  }
+
+  if (branchHint) {
+    const target = normalizeEarthlyBranch(branchHint);
+    const byBranch = palaces.find((palace) => normalizeEarthlyBranch(palace.earthlyBranch) === target);
+    if (byBranch) {
+      return byBranch;
+    }
+  }
+
+  return createEmptyPalace('soul');
+}
+
+function resolveBodyPalace(palaces: PalaceData[], branchHint?: string): PalaceData {
+  const direct = palaces.find((palace) => palace.isBodyPalace);
+  if (direct) {
+    return direct;
+  }
+
+  const byName = palaces.find((palace) => {
+    const normalized = normalizePalaceName(palace.name);
+    return normalized === 'body' || normalized === '\u8eab';
+  });
+  if (byName) {
+    return byName;
+  }
+
+  if (branchHint) {
+    const target = normalizeEarthlyBranch(branchHint);
+    const byBranch = palaces.find((palace) => normalizeEarthlyBranch(palace.earthlyBranch) === target);
+    if (byBranch) {
+      return byBranch;
+    }
+  }
+
+  return createEmptyPalace('body');
 }
 
 function createEmptyPalace(name: string): PalaceData {
@@ -206,24 +265,18 @@ function createEmptyPalace(name: string): PalaceData {
 
 // ─── Utility Functions ──────────────────────────────────────────────────────────
 
-/**
- * 获取命宫主星描述
- */
 export function getMingGongDescription(mingGong: PalaceData): string {
   if (mingGong.isEmpty) {
-    return '空宫';
+    return 'Life palace stars: No major stars';
   }
 
   const stars = mingGong.majorStars.join('·');
-  return `命宫主星：${stars}`;
+  return `Life palace stars: ${stars}`;
 }
 
-/**
- * 获取核心身份描述
- */
 export function getCoreIdentity(parsed: ParsedAstrolabe): string {
   const stars = parsed.mingGong.majorStars.join('·');
-  return `命宫主星：${stars || '空宫'}`;
+  return `Life palace stars: ${stars || 'No major stars'}`;
 }
 
 // ─── Detailed Palace Data Types ────────────────────────────────────────────────
@@ -255,9 +308,6 @@ export interface DetailedAstrolabe {
 
 // ─── Extract Full Data ─────────────────────────────────────────────────────────
 
-/**
- * 提取完整的命盘数据（用于 LLM 输入）
- */
 export function extractDetailedAstrolabe(raw: unknown): DetailedAstrolabe {
   const data = raw as Record<string, unknown>;
   const rawPalaces = (data?.palaces || []) as unknown[];
@@ -272,9 +322,6 @@ export function extractDetailedAstrolabe(raw: unknown): DetailedAstrolabe {
   };
 }
 
-/**
- * 提取单个宫位的完整数据
- */
 function extractDetailedPalace(palace: Record<string, unknown>): DetailedPalaceData {
   const majorStars = (palace?.majorStars || []) as unknown[];
   const minorStars = (palace?.minorStars || []) as unknown[];
@@ -305,26 +352,26 @@ function extractDetailedPalace(palace: Record<string, unknown>): DetailedPalaceD
   };
 }
 
-// ─── LLM Prompt Formatter ───────────────────────────────────────────────────────
+// ─── LLM Prompt Formatter ─────────────────────────────────────────────────────
 
-/**
- * 格式化命盘数据为 LLM 可读的文本格式
- * 这个函数需要原始的 astrolabe 对象（包含方法）
- */
 export function formatAstrolabeForLLM(astrolabe: unknown): string {
   const data = astrolabe as Record<string, unknown>;
   const palaces = (data?.palaces || []) as unknown[];
   const lines: string[] = [];
 
-  // 基本信息
-  lines.push(`命主: ${data?.gender === '男' ? '男命' : '女命'}`);
-  lines.push(`阳历: ${data?.solarDate || ''}`);
-  lines.push(`农历: ${data?.lunarDate || ''}`);
-  lines.push(`生肖: ${data?.zodiac || ''}`);
-  lines.push(`五行局: ${data?.fiveElementsClass || ''}`);
+  const gender = localizeGender('en', String(data?.gender || ''));
+  const solarDate = String(data?.solarDate || '');
+  const lunarDate = formatLunarDate(data?.rawDates as RawDates | undefined, String(data?.lunarDate || ''));
+  const chineseZodiac = localizeChineseZodiac('en', String(data?.chineseZodiac || data?.zodiac || ''));
+  const fiveElementsClass = String(data?.fiveElementsClass || data?.fiveElementClass || '');
+
+  lines.push(`Gender: ${gender}`);
+  lines.push(`Solar date: ${solarDate}`);
+  lines.push(`Lunar date: ${lunarDate}`);
+  lines.push(`Chinese zodiac: ${chineseZodiac}`);
+  lines.push(`Five-element pattern: ${fiveElementsClass}`);
   lines.push('');
 
-  // 十二宫详细
   palaces.forEach((palace: unknown) => {
     lines.push(formatPalaceDetailForLLM(palace as Record<string, unknown>, astrolabe));
   });
@@ -332,131 +379,120 @@ export function formatAstrolabeForLLM(astrolabe: unknown): string {
   return lines.join('\n');
 }
 
-/**
- * 格式化单个宫位详情
- */
 function formatPalaceDetailForLLM(palace: Record<string, unknown>, astrolabe: unknown): string {
   const lines: string[] = [];
   const astrolabeData = astrolabe as Record<string, unknown>;
 
-  // 宫位名称
   const name = String(palace?.name || '');
-  const displayName = name.endsWith('宫') ? name : name + '宫';
-  lines.push(`${displayName} | 天干：${palace?.heavenlyStem || ''} | 地支：${palace?.earthlyBranch || ''}`);
+  const displayName = localizePalaceName('en', name) || name;
+  const heavenlyStem = String(palace?.heavenlyStem || '');
+  const earthlyBranch = localizeEarthlyBranch('en', String(palace?.earthlyBranch || ''));
 
-  // 主星
+  lines.push(`${displayName} | Heavenly stem: ${toTitleCase(heavenlyStem)} | Earthly branch: ${earthlyBranch}`);
+
   const majorStars = formatStarsWithBrightnessLLM(palace?.majorStars);
-  lines.push(`主星：${majorStars || '无'}`);
+  lines.push(`Major stars: ${majorStars || 'None'}`);
 
-  // 辅星
   const minorStars = formatStarsWithBrightnessLLM(palace?.minorStars);
-  lines.push(`辅星：${minorStars || '无'}`);
+  lines.push(`Minor stars: ${minorStars || 'None'}`);
 
-  // 杂耀
   const adjStars = formatAdjectiveStarsLLM(palace?.adjectiveStars);
-  lines.push(`杂耀：${adjStars || '无'}`);
+  lines.push(`Supporting stars: ${adjStars || 'None'}`);
 
-  // 12神
-  lines.push(`长生12神：${palace?.changsheng12 || ''}`);
-  lines.push(`博士12神：${palace?.boshi12 || ''}`);
-  lines.push(`将前12神：${palace?.jiangqian12 || ''}`);
-  lines.push(`岁前12神：${palace?.suiqian12 || ''}`);
+  lines.push(`Changsheng 12: ${palace?.changsheng12 || ''}`);
+  lines.push(`Boshi 12: ${palace?.boshi12 || ''}`);
+  lines.push(`Jiangqian 12: ${palace?.jiangqian12 || ''}`);
+  lines.push(`Suiqian 12: ${palace?.suiqian12 || ''}`);
 
-  // 大限
   const decadal = palace?.decadal as Record<string, unknown>;
   if (decadal?.range) {
     const range = decadal.range as number[];
-    lines.push(`大限：${range[0]} - ${range[1]}`);
+    lines.push(`Decadal cycle: ${range[0]} - ${range[1]}`);
   }
 
-  // 小限
   const ages = palace?.ages as number[];
   if (ages) {
-    lines.push(`小限年龄：${ages.join(', ')}`);
+    lines.push(`Age nodes: ${ages.join(', ')}`);
   }
 
-  // 三方四正
   const sanfang = getSanFangSiZhengLLM(name, astrolabeData);
-  lines.push(`三方四正：${sanfang}`);
+  lines.push(`Surrounding palaces: ${sanfang}`);
 
   lines.push('');
   return lines.join(' | ');
 }
 
-/**
- * 格式化星曜带亮度
- */
+function toTitleCase(value: string): string {
+  if (!value) {
+    return '';
+  }
+
+  return value
+    .split(/\s+/)
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : ''))
+    .join(' ')
+    .trim();
+}
+
 function formatStarsWithBrightnessLLM(stars: unknown): string {
   if (!Array.isArray(stars) || stars.length === 0) return '';
   return stars
     .map((star: unknown) => {
       const s = star as Record<string, unknown>;
       const name = String(s?.name || '');
-      const brightness = s?.brightness ? `·${s.brightness}` : '';
+      const brightness = s?.brightness ? ` ${s.brightness}` : '';
       return name ? `${name}${brightness}` : '';
     })
     .filter(Boolean)
-    .join('、');
+    .join(', ');
 }
 
-/**
- * 格式化杂耀星
- */
 function formatAdjectiveStarsLLM(stars: unknown): string {
   if (!Array.isArray(stars) || stars.length === 0) return '';
   return stars
     .map((star: unknown) => String((star as Record<string, unknown>)?.name || ''))
     .filter(Boolean)
-    .join('、');
+    .join(', ');
 }
 
-/**
- * 获取三方四正描述
- */
 function getSanFangSiZhengLLM(palaceName: string, astrolabe: Record<string, unknown>): string {
   try {
-    // 调用 iztro 的 surroundedPalaces 方法
     const surroundedPalaces = astrolabe.surroundedPalaces as (name: string) => Record<string, unknown>;
     if (typeof surroundedPalaces !== 'function') {
-      return '无法获取';
+      return 'Unavailable';
     }
 
     const sanfang = surroundedPalaces.call(astrolabe, palaceName);
     const parts: string[] = [];
 
-    // 辅助函数
     const getDisplayName = (palace: Record<string, unknown>): string => {
       const name = String(palace?.name || '');
-      return name.endsWith('宫') ? name : name + '宫';
+      return localizePalaceName('en', name) || name;
     };
 
     const formatPalaceStars = (palace: Record<string, unknown>): string => {
-      const stars = formatStarsWithBrightnessLLM(palace?.majorStars) || '无';
-      return `${getDisplayName(palace)}（主星：${stars}）`;
+      const stars = formatStarsWithBrightnessLLM(palace?.majorStars) || 'None';
+      return `${getDisplayName(palace)} (major stars: ${stars})`;
     };
 
-    // 本宫
     if (sanfang?.target) {
       parts.push(formatPalaceStars(sanfang.target as Record<string, unknown>));
     }
 
-    // 对宫
     if (sanfang?.opposite) {
       parts.push(formatPalaceStars(sanfang.opposite as Record<string, unknown>));
     }
 
-    // 财帛方向
     if (sanfang?.wealth) {
       parts.push(formatPalaceStars(sanfang.wealth as Record<string, unknown>));
     }
 
-    // 官禄方向
     if (sanfang?.career) {
       parts.push(formatPalaceStars(sanfang.career as Record<string, unknown>));
     }
 
-    return parts.join('，');
+    return parts.join('; ');
   } catch {
-    return '无法获取';
+    return 'Unavailable';
   }
 }

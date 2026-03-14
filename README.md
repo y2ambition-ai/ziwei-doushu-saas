@@ -1,93 +1,102 @@
-# 紫微斗数在线排盘 SaaS
+# 天命玄机 / Tianming Secrets
 
-![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)
-![Status](https://img.shields.io/badge/status-production-blue)
+一个基于 Next.js 15 App Router 构建的紫微斗数独立站。用户先生成免费命盘，再决定是否通过 Stripe 解锁 AI 深度解读；默认英文，同时支持中文。
 
-**[在线演示](https://ziwei-doushu-saas.vercel.app)** | **[GitHub](https://github.com/y2ambition-ai/ziwei-doushu-saas)**
+> Snapshot: 2026-03-11
 
-在线紫微斗数排盘与 AI 命理解析服务。用户输入出生信息，系统生成传统命盘，并通过火山引擎豆包大模型生成个性化命理解读报告。
+## 当前状态
 
-> **v1.0.0 Baseline Release (2026-02-24)** - MVP 完成，全球化提示词优化，生产环境稳定运行
+- 根路径 `/` 自动跳转到 `/en`
+- 核心页面与主流程支持 `en / zh`
+- 用户先看命盘，再决定是否付费解锁长文报告
+- 支付链路已串通：`Checkout -> Webhook -> Success -> Result`
+- 本地无库场景支持临时报告兜底，方便首页到结果页整链路预览
 
-## 功能特性
+## 核心能力
 
-- **传统命盘排盘**: 基于 `iztro` 引擎的精准紫微斗数排盘
-- **真太阳时计算**: 根据经度自动校正出生时辰
-- **AI 命理解读**: 豆包大模型生成 3500-4500 字专业报告
-- **全球本地化**: 支持 12+ 国家/地区的教育、职业、货币术语
-- **支付集成**: Stripe Checkout 安全支付
-- **邮件发送**: Resend 自动发送报告链接
+- 紫微斗数排盘：基于 `iztro`
+- 真太阳时校正：结合出生地时间与经度逻辑
+- 双语 AI 解读：同一套流程支持中文与英文输出
+- Stripe 支付：同一份 `Report` 贯穿命盘、支付、结果页
+- 7 天复看：相同邮箱和参数可在复用窗口内再次打开
 
-## 技术栈
+## 用户主流程
 
-| 类别 | 技术 |
-|------|------|
-| 框架 | Next.js 15 + React 19 + TypeScript |
-| 样式 | Tailwind CSS 4 + Lucide Icons |
-| 排盘 | iztro |
-| 大模型 | 火山引擎豆包 API |
-| 支付 | Stripe |
-| 邮件 | Resend |
-| 数据库 | Prisma + PostgreSQL |
+1. 访问 `/`，自动进入 `/en`
+2. 在 `/${locale}` 首页填写出生信息，调用 `/api/report/generate`
+3. 进入 `/${locale}/chart/[id]` 查看免费命盘
+4. 决定是否调用 `/api/checkout` 发起支付
+5. 支付成功后返回 `/${locale}/success?report_id=...`
+6. `/api/webhook` 回写原始 `Report`
+7. 成功页轮询 `/api/report/[id]`
+8. 就绪后跳转 `/${locale}/result/[id]`
+
+## 关键目录
+
+```text
+src/
+├── app/
+│   ├── [locale]/             # 本地化首页、命盘页、结果页、成功页
+│   ├── api/                  # checkout、webhook、report APIs
+│   ├── chart/[id]/           # 命盘共享实现
+│   ├── result/[id]/          # 结果页共享实现
+│   └── success/              # 旧成功页兼容跳转
+├── components/
+│   ├── home/                 # 首页落地页
+│   ├── CheckoutSuccess.tsx   # Success 轮询界面
+│   ├── LanguageSwitcher.tsx  # 语言切换
+│   ├── FullChart.tsx         # 完整命盘渲染
+│   └── chart-shared.tsx      # 命盘共享组件
+└── lib/
+    ├── i18n/                 # 语言配置、字典、路由
+    ├── llm/                  # AI 解读
+    ├── stripe/               # 支付辅助
+    ├── report-view.ts        # 统一报告读取
+    ├── temp-report-store.ts  # 本地无库兜底
+    ├── solar-time/           # 真太阳时
+    └── ziwei/                # 排盘封装
+```
 
 ## 快速开始
 
 ```bash
-# 安装依赖
 pnpm install
-
-# 配置环境变量
-cp .env.example .env.local
-
-# 初始化数据库
 pnpm prisma generate
-pnpm prisma db push
-
-# 启动开发服务器
 pnpm dev
 ```
 
-访问 http://localhost:3000
+默认开发地址：`http://localhost:3000`
 
-## 环境变量
+## 本地预览说明
 
-复制 `.env.example` 到 `.env.local` 并填入真实值：
+- 如果 `DATABASE_URL` 缺失、无效或本地数据库不可用，部分链路会退化到本地临时文件 `.local/temp-reports.json`
+- Vercel 运行时会自动改用系统临时目录，避免把 `.next/cache` 构建缓存打进 Serverless Functions
+- 该兜底主要用于本地预览和联调，不替代真实的数据库、支付和 webhook 数据
+- 真实支付联调仍建议完整配置 `DATABASE_URL`、`STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`
 
-| 变量 | 说明 |
-|------|------|
-| `DATABASE_URL` | PostgreSQL 连接串 |
-| `STRIPE_SECRET_KEY` | Stripe 密钥 |
-| `STRIPE_WEBHOOK_SECRET` | Stripe Webhook 密钥 |
-| `DOUBAO_API_KEY` | 火山引擎 API Key |
-| `RESEND_API_KEY` | Resend 邮件 API Key |
-
-## 项目结构
-
-```
-src/
-├── app/              # Next.js App Router 页面
-├── components/       # React 组件
-├── lib/              # 核心库（排盘、LLM、支付）
-└── instrumentation.ts # Sentry 初始化
-```
-
-## 部署
+## 常用命令
 
 ```bash
-# 部署到 Vercel
-vercel --prod
+pnpm dev
+pnpm exec tsc --noEmit
+pnpm test -- --run
+pnpm build
 ```
 
-## 开发进度
+说明：`pnpm lint` 当前会触发 Next.js ESLint 的交互式初始化，不适合作为无交互验证命令。
 
-- [x] Phase 1: 基础设施
-- [x] Phase 2: 排盘引擎
-- [x] Phase 3: LLM 集成
-- [x] Phase 4: 前端
-- [x] Phase 5: 支付 & 邮件
-- [x] Phase 6: 生产部署
-- [ ] 项目文档完善
+## 文档入口
 
-## 许可证
+- `README.md`：项目总览
+- `PROJECT_INDEX.md`：结构索引与关键路径
+- `AGENTS.md`：代理协作规范与仓库快照
 
-私有项目
+## 当前注意事项
+
+- 当前真实支付实现是 Stripe，不是 PayPal
+- 旧 `/chart/[id]`、`/result/[id]`、`/success` 路由仍保留兼容跳转
+- 根目录调试截图与 `scratch/` 已归类为本地调试产物，不应提交
+
+## License
+
+私有项目。

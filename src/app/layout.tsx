@@ -1,37 +1,41 @@
-import type { Metadata } from "next";
-import { Noto_Serif_SC, Cormorant_Garamond } from "next/font/google";
-import "./globals.css";
+﻿import type { Metadata } from 'next';
+import { Noto_Serif_SC, Cormorant_Garamond } from 'next/font/google';
+
+import './globals.css';
 
 const notoSerif = Noto_Serif_SC({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-serif",
-  display: "swap", // 避免字体加载阻塞渲染
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-serif',
+  display: 'swap',
 });
 
 const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-display",
-  display: "swap",
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-display',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "天命玄机 · 紫微斗数命盘解读",
-  description: "承载千年道家智慧，融汇紫微斗数之精髓，为您揭示命运的内在规律",
-  keywords: ['紫微斗数', '命盘', '命理', '道家', '算命', '八字', '星盘', '命理解读'],
-  authors: [{ name: '天命玄机' }],
+  title: {
+    default: 'Tianming Secrets | Zi Wei Dou Shu Reading',
+    template: '%s | Tianming Secrets',
+  },
+  description: 'Ancient Zi Wei Dou Shu charts and English readings shaped for modern life.',
+  keywords: ['Zi Wei Dou Shu', 'destiny chart', 'Chinese astrology', 'metaphysics', 'fortune reading'],
+  authors: [{ name: 'Tianming Secrets' }],
   openGraph: {
-    title: '天命玄机 · 紫微斗数命盘解读',
-    description: '承载千年道家智慧，融汇紫微斗数之精髓，为您揭示命运的内在规律',
+    title: 'Tianming Secrets | Zi Wei Dou Shu Reading',
+    description: 'Ancient Zi Wei Dou Shu charts and English readings shaped for modern life.',
     type: 'website',
-    locale: 'zh_CN',
-    siteName: '天命玄机',
+    locale: 'en_US',
+    siteName: 'Tianming Secrets',
   },
   twitter: {
     card: 'summary',
-    title: '天命玄机 · 紫微斗数命盘解读',
-    description: '承载千年道家智慧，融汇紫微斗数之精髓，为您揭示命运的内在规律',
+    title: 'Tianming Secrets | Zi Wei Dou Shu Reading',
+    description: 'Ancient Zi Wei Dou Shu charts and English readings shaped for modern life.',
   },
   robots: {
     index: true,
@@ -45,7 +49,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" className={`${notoSerif.variable} ${cormorant.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${notoSerif.variable} ${cormorant.variable}`}>
       <body className="antialiased">{children}</body>
     </html>
   );

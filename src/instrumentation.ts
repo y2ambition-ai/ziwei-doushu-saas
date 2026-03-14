@@ -1,6 +1,6 @@
 /**
  * Next.js Instrumentation Hook
- * 在服务端启动时执行 Sentry 初始化
+ * Initializes Sentry on server startup.
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {

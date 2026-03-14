@@ -1,10 +1,9 @@
 /**
- * 获取报告 API
- * GET /api/report/[id]
+ * Report retrieval API (GET /api/report/[id]).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { getReportViewData } from '@/lib/report-view';
 
 export async function GET(
   request: NextRequest,
@@ -13,13 +12,11 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const report = await prisma.report.findUnique({
-      where: { id },
-    });
+    const report = await getReportViewData(id);
 
     if (!report) {
       return NextResponse.json(
-        { error: '报告不存在' },
+        { error: 'Report not found.' },
         { status: 404 }
       );
     }
@@ -28,6 +25,7 @@ export async function GET(
       success: true,
       report: {
         id: report.id,
+        locale: report.locale,
         email: report.email,
         gender: report.gender,
         birthDate: report.birthDate,
@@ -36,17 +34,18 @@ export async function GET(
         coreIdentity: report.coreIdentity,
         aiReport: report.aiReport,
         createdAt: report.createdAt,
+        paidAt: report.paidAt,
+        completedAt: report.completedAt,
       },
     }, {
       headers: {
-        // 缓存 1 小时，报告数据不会变化
-        'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+        'Cache-Control': 'no-store',
       },
     });
   } catch (error) {
     console.error('Get report error:', error);
     return NextResponse.json(
-      { error: '获取报告失败' },
+      { error: 'Failed to fetch report.' },
       { status: 500 }
     );
   }

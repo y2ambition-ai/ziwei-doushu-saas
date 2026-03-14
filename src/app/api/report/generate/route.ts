@@ -1,9 +1,7 @@
 /**
- * 报告生成 API
- * POST /api/report/generate
- *
- * 用户输入当前位置时间，系统根据与北京时间的差异计算经度
- * 支持缓存：相同信息 24 小时内免费复用
+ * Report generation API (POST /api/report/generate).
+ * Uses the user's current local time to approximate longitude for true-solar time.
+ * Reuses cached reports within 24 hours.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,23 +12,26 @@ import {
   GenerateReportInput,
 } from '@/lib/llm';
 import { prisma } from '@/lib/db';
+import { Locale, normalizeLocale } from '@/lib/i18n/config';
+import { resolveStoredReportLocale, setStoredReportLocale } from '@/lib/report-preferences';
+import { createTempReport } from '@/lib/temp-report-store';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const BEIJING_LONGITUDE = 120; // 东经120度 = 北京时间基准
-const HOURS_TO_DEGREES = 15; // 每1小时 = 15度经度
-const CACHE_HOURS = 24; // 缓存有效期（小时）
+const BEIJING_LONGITUDE = 120; // Reference for UTC+8.
+const CACHE_HOURS = 24; // Cache window in hours.
 
 // ─── Request Schema ────────────────────────────────────────────────────────────
 
 interface GenerateRequest {
   email: string;
   gender: 'male' | 'female';
+  locale?: string;
   country?: string; // ISO country code: CN, US, SG, MY, etc.
   birthDate: string; // YYYY-MM-DD
   birthTime: number; // 0-23
   birthMinute: number; // 0-59
-  // 新增：用户当前位置时间（用于计算时区偏移）
+  // User's current local time at birthplace (for longitude approximation)
   currentHour: number; // 0-23
   currentMinute: number; // 0-59
 }
@@ -38,26 +39,22 @@ interface GenerateRequest {
 // ─── Helper: Calculate Longitude from Time Difference ───────────────────────────
 
 /**
- * 根据用户提供的当前时间计算经度
- * 逻辑：用户时间 vs 北京时间 → 时差 → 经度偏移
+ * Approximate longitude from the user's local time difference.
+ * Logic: user time vs reference time → time delta → longitude offset.
  */
 function calculateLongitudeFromTimeDiff(
   userHour: number,
   userMinute: number
 ): number {
-  // 获取当前北京时间
   const now = new Date();
   const beijingHour = now.getHours();
   const beijingMinute = now.getMinutes();
 
-  // 转换为分钟便于计算
   const userTotalMinutes = userHour * 60 + userMinute;
   const beijingTotalMinutes = beijingHour * 60 + beijingMinute;
 
-  // 计算时间差（分钟）
   let timeDiffMinutes = userTotalMinutes - beijingTotalMinutes;
 
-  // 处理跨日情况
   if (timeDiffMinutes > 12 * 60) {
     timeDiffMinutes -= 24 * 60;
   } else if (timeDiffMinutes < -12 * 60) {
@@ -73,9 +70,9 @@ function calculateLongitudeFromTimeDiff(
 // ─── Helper: Check Cache ───────────────────────────────────────────────────────
 
 /**
- * 检查是否有缓存的报告（24小时内相同信息）
+ * Check cached reports within the 24-hour window.
  */
-async function getCachedReport(body: GenerateRequest): Promise<{
+async function getCachedReport(body: GenerateRequest, locale: Locale): Promise<{
   found: boolean;
   report?: {
     id: string;
@@ -87,7 +84,7 @@ async function getCachedReport(body: GenerateRequest): Promise<{
   try {
     const cacheTime = new Date(Date.now() - CACHE_HOURS * 60 * 60 * 1000);
 
-    const cached = await prisma.report.findFirst({
+    const cachedReports = await prisma.report.findMany({
       where: {
         email: body.email,
         birthDate: body.birthDate,
@@ -100,7 +97,12 @@ async function getCachedReport(body: GenerateRequest): Promise<{
       orderBy: {
         createdAt: 'desc',
       },
+      take: 10,
     });
+
+    const cached = cachedReports.find(
+      (report) => resolveStoredReportLocale(report, locale) === locale
+    );
 
     if (cached) {
       return {
@@ -120,13 +122,28 @@ async function getCachedReport(body: GenerateRequest): Promise<{
   return { found: false };
 }
 
+function findLifePalace(rawPalaces: Array<{ name?: string; isOriginalPalace?: boolean }>): Record<string, unknown> | null {
+  const direct = rawPalaces.find((palace) => palace?.isOriginalPalace);
+  if (direct) {
+    return direct as Record<string, unknown>;
+  }
+
+  const fallback = rawPalaces.find((palace) => {
+    const name = String(palace?.name || '').trim().toLowerCase();
+    return name === 'soul' || name === 'life' || name === '\u547d' || name === '\u547d\u5bab';
+  });
+
+  return (fallback as Record<string, unknown>) || null;
+}
+
 // ─── POST Handler ──────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   try {
     const body: GenerateRequest = await request.json();
+    const locale = normalizeLocale(body.locale);
 
-    // 1. 验证输入
+    // 1. Validate input
     const validationError = validateInput(body);
     if (validationError) {
       return NextResponse.json(
@@ -135,8 +152,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 检查缓存（24小时内相同信息免费复用）
-    const cached = await getCachedReport(body);
+    // 2. Reuse cached report within 24 hours
+    const cached = await getCachedReport(body, locale);
     if (cached.found && cached.report) {
       console.log('Returning cached report for:', body.email);
       const rawAstrolabe = JSON.parse(cached.report.rawAstrolabe);
@@ -146,21 +163,21 @@ export async function POST(request: NextRequest) {
         coreIdentity: cached.report.coreIdentity,
         report: cached.report.aiReport,
         cached: true,
-        message: '您在24小时内已测算过相同信息，本次免费查看',
+        message: 'A matching report was generated within the last 24 hours. Opening the cached result.',
         astrolabe: {
-          mingGong: rawAstrolabe.palaces?.find((p: { name: string }) => p.name === '命宫') || {},
+          mingGong: findLifePalace((rawAstrolabe.palaces || []) as Array<{ name?: string; isOriginalPalace?: boolean }>) || {},
           chineseZodiac: rawAstrolabe.zodiac,
         },
       });
     }
 
-    // 3. 根据用户当前时间计算经度
+    // 3. Approximate longitude
     const longitude = calculateLongitudeFromTimeDiff(
       body.currentHour,
       body.currentMinute
     );
 
-    // 4. 生成命盘
+    // 4. Generate chart
     const astrolabe = generateAstrolabe({
       birthDate: body.birthDate,
       birthTime: body.birthTime,
@@ -168,33 +185,33 @@ export async function POST(request: NextRequest) {
       gender: body.gender,
       longitude,
       latitude: 0,
-      birthCity: `经度${longitude.toFixed(1)}°`,
+      birthCity: `Longitude ${longitude.toFixed(1)}°`,
     });
 
-    // 5. 准备 LLM 输入
+    // 5. Prepare LLM input
     const llmInput: GenerateReportInput = {
       email: body.email,
       gender: body.gender,
       birthDate: body.birthDate,
       birthTime: astrolabe.parsed.solarTime.shichen,
-      birthCity: `东经${longitude.toFixed(1)}°`,
-      mingGong: astrolabe.parsed.mingGong.majorStars.join('·') || '空宫',
+      birthCity: `Longitude ${longitude.toFixed(1)}°`,
+      mingGong: astrolabe.parsed.mingGong.majorStars.join('·') || 'No major stars',
       wuXingJu: astrolabe.parsed.wuXingJu,
       chineseZodiac: astrolabe.parsed.chineseZodiac,
       zodiac: astrolabe.parsed.zodiac,
       siZhu: astrolabe.parsed.siZhu,
       palaces: astrolabe.parsed.palaces,
       rawAstrolabe: astrolabe.raw,
+      locale,
     };
 
-    // 6. 生成报告（暂时跳过豆包API，只生成排盘）
-    // 用户可以在排盘页面选择是否获取AI解读
+    // 6. Generate report (skip remote LLM for now)
     const reportResult = {
-      coreIdentity: `命宫主星：${llmInput.mingGong}，五行属${llmInput.wuXingJu}`,
-      report: '', // 暂不生成AI报告
+      coreIdentity: `Life palace stars: ${llmInput.mingGong}; five-element pattern: ${llmInput.wuXingJu}.`,
+      report: '', // Skip AI report generation for now.
     };
 
-    // 7. 存储到数据库
+    // 7. Persist report
     let reportId = `test-${Date.now()}`;
     try {
       const report = await prisma.report.create({
@@ -204,8 +221,9 @@ export async function POST(request: NextRequest) {
           country: body.country || 'OTHER',
           birthDate: body.birthDate,
           birthTime: body.birthTime,
-          birthCity: `经度${longitude.toFixed(1)}°`,
+          birthCity: `Longitude ${longitude.toFixed(1)}°`,
           longitude,
+          parsedData: setStoredReportLocale(null, locale),
           rawAstrolabe: JSON.stringify(astrolabe.raw),
           aiReport: reportResult.report,
           coreIdentity: reportResult.coreIdentity,
@@ -213,10 +231,26 @@ export async function POST(request: NextRequest) {
       });
       reportId = report.id;
     } catch (dbError) {
-      console.log('Database not available, using temporary ID');
+      createTempReport({
+        id: reportId,
+        email: body.email,
+        gender: body.gender,
+        country: body.country || 'OTHER',
+        birthDate: body.birthDate,
+        birthTime: body.birthTime,
+        birthMinute: body.birthMinute,
+        birthCity: `Longitude ${longitude.toFixed(1)}°`,
+        longitude,
+        latitude: 0,
+        parsedData: setStoredReportLocale(null, locale),
+        rawAstrolabe: JSON.stringify(astrolabe.raw),
+        aiReport: reportResult.report,
+        coreIdentity: reportResult.coreIdentity,
+      });
+      console.log('Database not available, using temporary report store');
     }
 
-    // 8. 返回结果
+    // 8. Response
     return NextResponse.json({
       success: true,
       reportId,
@@ -234,9 +268,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Report generation error:', error);
-    const errorMessage = error instanceof Error ? error.message : '未知错误';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `报告生成失败: ${errorMessage}` },
+      { error: `Report generation failed: ${errorMessage}` },
       { status: 500 }
     );
   }
@@ -246,23 +280,23 @@ export async function POST(request: NextRequest) {
 
 function validateInput(body: GenerateRequest): string | null {
   if (!body.email || !isValidEmail(body.email)) {
-    return '请输入有效的邮箱地址';
+    return 'Please enter a valid email address.';
   }
 
   if (!body.gender || !['male', 'female'].includes(body.gender)) {
-    return '请选择性别';
+    return 'Please select a gender.';
   }
 
   if (!body.birthDate || !isValidDate(body.birthDate)) {
-    return '请输入有效的出生日期';
+    return 'Please enter a valid birth date.';
   }
 
   if (typeof body.birthTime !== 'number' || body.birthTime < 0 || body.birthTime > 23) {
-    return '请选择有效的出生时辰';
+    return 'Please select a valid birth time block.';
   }
 
   if (typeof body.currentHour !== 'number' || body.currentHour < 0 || body.currentHour > 23) {
-    return '请输入当前小时';
+    return 'Please enter the local hour at the birthplace.';
   }
 
   return null;
