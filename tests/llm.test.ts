@@ -143,6 +143,68 @@ describe('LLM report contract', () => {
     expect(secondRequest.input).toContain('Rewrite the entire report from scratch');
   });
 
+  it('parses streaming responses for the gs88-compatible endpoint', async () => {
+    const streamBody = [
+      'event: response.created',
+      'data: {"type":"response.created","response":{"status":"in_progress","output":[]}}',
+      '',
+      'event: response.output_text.delta',
+      'data: {"type":"response.output_text.delta","delta":"Core Identity: Stable and perceptive."}',
+      '',
+      'event: response.output_text.delta',
+      `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: `\n\n${buildEnglishReport().split('\n\n').slice(1).join('\n\n')}` })}`,
+      '',
+      'event: response.completed',
+      `data: ${JSON.stringify({
+        type: 'response.completed',
+        response: {
+          output: [
+            {
+              content: [
+                {
+                  type: 'output_text',
+                  text: buildEnglishReport(),
+                },
+              ],
+            },
+          ],
+        },
+      })}`,
+      '',
+    ].join('\n');
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(streamBody, {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      })
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await generateReport(
+      { ...baseInput, locale: 'en' },
+      {
+        apiKey: 'test-key',
+        baseURL: 'https://ai.gs88.shop',
+        model: 'gpt-5.2',
+      }
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://ai.gs88.shop/v1/responses');
+
+    const request = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(request.store).toBe(false);
+    expect(request.stream).toBe(true);
+    expect(Array.isArray(request.input)).toBe(true);
+    expect(request.input[0].content[0].type).toBe('input_text');
+    expect(result.report).toContain('## Lucky Elements and Practical Guidance');
+  });
+
   it('mock report follows the English contract', () => {
     const englishMock = generateMockReport({ ...baseInput, locale: 'en' });
 

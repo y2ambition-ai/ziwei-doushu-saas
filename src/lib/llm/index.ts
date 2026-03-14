@@ -536,6 +536,41 @@ interface ReportCompletionRequest {
   temperature: number;
 }
 
+function requiresStreamingResponses(baseURL: string): boolean {
+  return /ai\.gs88\.shop/i.test(baseURL);
+}
+
+function extractAPIError(data: unknown): string | null {
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
+
+  const error = Reflect.get(data, 'error');
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim();
+  }
+
+  if (error && typeof error === 'object') {
+    const detail = Reflect.get(error, 'detail');
+    const message = Reflect.get(error, 'message');
+
+    if (typeof detail === 'string' && detail.trim()) {
+      return detail.trim();
+    }
+
+    if (typeof message === 'string' && message.trim()) {
+      return message.trim();
+    }
+  }
+
+  const detail = Reflect.get(data, 'detail');
+  if (typeof detail === 'string' && detail.trim()) {
+    return detail.trim();
+  }
+
+  return null;
+}
+
 function extractResponseText(data: unknown): string {
   if (!data || typeof data !== 'object') {
     return '';
@@ -580,6 +615,120 @@ function extractResponseText(data: unknown): string {
   return chunks.join('\n').trim();
 }
 
+async function readStreamingResponse(response: Response): Promise<string> {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('text/event-stream')) {
+    const rawText = await response.text();
+
+    try {
+      const parsed = JSON.parse(rawText);
+      const apiError = extractAPIError(parsed);
+      if (apiError) {
+        throw new Error(apiError);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+    }
+
+    throw new Error(`Unexpected non-stream response: ${rawText.slice(0, 500)}`);
+  }
+
+  if (!response.body) {
+    throw new Error('Streaming response body is empty');
+  }
+
+  const decoder = new TextDecoder();
+  const reader = response.body.getReader();
+  let buffer = '';
+  let finalText = '';
+  const deltaChunks: string[] = [];
+
+  const processBlock = (block: string) => {
+    const lines = block
+      .split(/\r?\n/)
+      .map((line) => line.trimEnd())
+      .filter(Boolean);
+
+    const dataLines = lines
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).trim());
+
+    if (dataLines.length === 0) {
+      return;
+    }
+
+    const rawData = dataLines.join('\n');
+    if (rawData === '[DONE]') {
+      return;
+    }
+
+    const payload = JSON.parse(rawData);
+    const apiError = extractAPIError(payload) || extractAPIError(Reflect.get(payload, 'response'));
+    if (apiError) {
+      throw new Error(apiError);
+    }
+
+    if (Reflect.get(payload, 'type') === 'response.output_text.delta') {
+      const delta = Reflect.get(payload, 'delta');
+      if (typeof delta === 'string' && delta) {
+        deltaChunks.push(delta);
+      }
+    }
+
+    if (Reflect.get(payload, 'type') === 'response.output_text.done') {
+      const text = Reflect.get(payload, 'text');
+      if (typeof text === 'string' && text.trim()) {
+        finalText = text.trim();
+      }
+    }
+
+    if (Reflect.get(payload, 'type') === 'response.completed') {
+      const completedText = extractResponseText(Reflect.get(payload, 'response'));
+      if (completedText) {
+        finalText = completedText;
+      }
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+
+    let delimiterIndex = buffer.indexOf('\n\n');
+    while (delimiterIndex >= 0) {
+      const block = buffer.slice(0, delimiterIndex).trim();
+      buffer = buffer.slice(delimiterIndex + 2);
+
+      if (block) {
+        processBlock(block);
+      }
+
+      delimiterIndex = buffer.indexOf('\n\n');
+    }
+
+    if (done) {
+      const tail = buffer.trim();
+      if (tail) {
+        processBlock(tail);
+      }
+      break;
+    }
+  }
+
+  if (finalText) {
+    return finalText;
+  }
+
+  const streamedText = deltaChunks.join('').trim();
+  if (streamedText) {
+    return streamedText;
+  }
+
+  throw new Error('API returned empty content');
+}
+
 async function requestReportCompletion({
   apiKey,
   baseURL,
@@ -588,6 +737,7 @@ async function requestReportCompletion({
   userPrompt,
   temperature,
 }: ReportCompletionRequest): Promise<string> {
+  const useStreamingResponses = requiresStreamingResponses(baseURL);
   const response = await fetch(`${baseURL}/responses`, {
     method: 'POST',
     headers: {
@@ -597,9 +747,33 @@ async function requestReportCompletion({
     body: JSON.stringify({
       model,
       instructions: systemPrompt,
-      input: userPrompt,
+      input: useStreamingResponses
+        ? [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: userPrompt,
+                },
+              ],
+            },
+          ]
+        : userPrompt,
       max_output_tokens: 6144,
-      temperature,
+      ...(useStreamingResponses
+        ? {
+            store: false,
+            stream: true,
+            text: {
+              format: {
+                type: 'text',
+              },
+            },
+          }
+        : {
+            temperature,
+          }),
     }),
   });
 
@@ -609,7 +783,16 @@ async function requestReportCompletion({
     throw new Error(`API returned ${response.status}: ${errorText}`);
   }
 
+  if (useStreamingResponses) {
+    return readStreamingResponse(response);
+  }
+
   const data = await response.json();
+  const apiError = extractAPIError(data);
+  if (apiError) {
+    console.error('API Response Error:', apiError, JSON.stringify(data));
+    throw new Error(apiError);
+  }
   const content = extractResponseText(data);
 
   if (!content) {
