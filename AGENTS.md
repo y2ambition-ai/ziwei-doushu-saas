@@ -31,12 +31,12 @@
 1. Visit `/`, auto-redirect to `/${defaultLocale}` (currently `/en`)
 2. `src/app/[locale]/page.tsx` renders the localized landing page `src/components/home/HomePage.tsx`
 3. The home form submits to `src/app/api/report/generate/route.ts` to create the base `Report`
-4. The home page calls `src/app/api/report/[id]/route.ts` for status and triggers Stripe Checkout via `src/app/api/checkout/route.ts` (or reuse/Mock)
-5. Stripe returns to `/${locale}/success?session_id=...&report_id=...`
-6. `src/app/api/webhook/route.ts` updates the original `Report` without creating duplicates
-7. `src/app/api/report/[id]/route.ts` powers success polling and result fetching
-8. `/${locale}/result/[id]` only generates the premium AI reading after payment or mock mode
-9. `/${locale}/chart/[id]` remains the chart display page (reachable from other entry points)
+4. The home page routes to `/${locale}/chart/[id]` so users see the free chart before any paid step
+5. `src/app/chart/[id]/ChartDisplay.tsx` triggers Stripe Checkout via `src/app/api/checkout/route.ts`
+6. Stripe returns to `/${locale}/success?session_id=...&report_id=...`
+7. `src/app/api/webhook/route.ts` marks the original `Report` as paid and writes back any missing chart data without creating duplicates
+8. `src/app/api/report/[id]/route.ts` powers success polling and result fetching
+9. `/${locale}/result/[id]` generates the premium AI reading only after payment or mock mode
 
 ## UI/UX Design Spec (Updated 2026-03-12)
 
@@ -78,15 +78,16 @@ Run in repo root:
 - `pnpm test -- --run`
 - `pnpm build`
 
-## Deployment Snapshot (2026-03-12)
+## Deployment Snapshot (2026-03-14)
 
-- Latest release branch: `release/locale-lock-age-neutral`
-- Latest release commit: `b793b37d2`
-- Vercel Preview: `https://ziwei-doushu-saas-7lgsx6i63-y2ambition-ais-projects.vercel.app`
+- Latest production branch: `main`
+- Latest production commit: `3c0f0fa79`
+- Latest production deployment: `https://ziwei-doushu-saas-3v6gj1e77-y2ambition-ais-projects.vercel.app`
 - Vercel Production: `https://ziwei-doushu-saas.vercel.app`
 - The function size issue was fixed. Root cause: the local no-DB fallback wrote to `.next/cache`; now it uses `.local/temp-reports.json` or the Vercel system temp directory.
 - The codebase now prefers `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` and normalizes root URLs to `/v1`; legacy `DOUBAO_*` variables remain supported as fallback for older deployments.
-- Production Stripe keys are still missing. Without `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, production stays on the no-key fallback.
+- Production currently uses Stripe **test** keys, not live keys.
+- Production webhook endpoint is configured for `checkout.session.completed` and `payment_intent.payment_failed`.
 
 ## Documentation
 
@@ -98,8 +99,12 @@ Run in repo root:
 
 - **Style consistency**: keep global tone unified and avoid abrupt background or typography shifts.
 - **Layout alignment**: the homepage responsive grid must keep both viewports aligned for `max-width` and `grid-cols`.
-- **Payment flow**: `src/app/chart/[id]/ChartDisplay.tsx` `handleGetReading` includes a mock fallback when keys are missing.
+- **Homepage flow**: the homepage is now fully English and routes to the free chart first; payment only begins from the chart page.
+- **Date input UX**: birth date uses three dropdowns (`YYYY / MM / DD`) for mobile-friendliness; users do not type separators manually.
+- **Payment flow**: `src/app/chart/[id]/ChartDisplay.tsx` `handleGetReading` starts checkout from the chart page and still includes a mock fallback when keys are missing.
+- **Checkout language**: Stripe Checkout sessions are created with `locale: 'en'` so hosted payment UI stays English where Stripe supports it.
 - **LLM runtime config**: runtime prefers project-local `.env.local` values for `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL` before inherited host environment variables, then falls back to legacy `DOUBAO_*`; root-only compatible bases are normalized to `/v1`.
+- **Chart wording**: user-facing chart labels avoid pinyin for birth time blocks, earthly branches, and Four Pillars where possible; prefer plain English for foreign-facing surfaces.
 - **Report language contract**: `src/lib/llm/index.ts` requires English output to start with `Core Identity:` and use the fixed six section headings. Update summary extraction and result display if the prompt changes.
 - **Report locale lock**: the first submission locale is stored; chart/success/result/AI must follow the report locale and should not allow manual URL switching.
 - **Age and region neutrality**: reports must adapt to life stage; avoid region-specific systems (SAT, A-Level, etc.) and school exam references.
