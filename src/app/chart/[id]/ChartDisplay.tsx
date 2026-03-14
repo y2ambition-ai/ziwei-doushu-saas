@@ -16,13 +16,15 @@ import {
   Divider,
   getShichenName,
   getWesternZodiac,
+  getBodyPalace,
+  getLifePalace,
   getPalaceByBranch,
   PalaceCell,
 } from '@/components/chart-shared';
 import { Locale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { getLocalizedPath } from '@/lib/i18n/routes';
-import { localizeChineseZodiac, localizeGender } from '@/lib/i18n/chart';
+import { extractSiZhu, formatLunarDate, localizeChineseZodiac, localizeGender } from '@/lib/i18n/chart';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,9 +56,14 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
   const [actionError, setActionError] = useState<string | null>(null);
   const astrolabe = report.rawAstrolabe;
   const palaces = astrolabe?.palaces || [];
-  const dictionary = getDictionary(locale).chart;
+  const appDictionary = getDictionary(locale);
+  const dictionary = appDictionary.chart;
+  const brand = appDictionary.brand;
+  const lifePalace = getLifePalace(palaces);
+  const bodyPalace = getBodyPalace(palaces);
+  const siZhu = extractSiZhu(astrolabe?.rawDates, astrolabe?.chineseDate);
 
-  // 获取大师解读
+  // Launch premium reading flow.
   const handleGetReading = async () => {
     setLoading(true);
     setFreeReuseMessage(null);
@@ -131,21 +138,9 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
     return cells;
   };
 
-  // 解析四柱数据：优先使用 chineseDate 字段，回退到原来的方式
-  const chineseDate = astrolabe?.chineseDate || '';
-  const siZhuParts = chineseDate.split(' ');
-  const siZhu = siZhuParts.length === 4
-    ? { year: siZhuParts[0], month: siZhuParts[1], day: siZhuParts[2], hour: siZhuParts[3] }
-    : {
-        year: astrolabe?.year?.categorical || '',
-        month: astrolabe?.month?.categorical || '',
-        day: astrolabe?.day?.categorical || '',
-        hour: astrolabe?.hour?.categorical || '',
-      };
-
   return (
     <div className="min-h-screen bg-[#F7F3EC] relative overflow-hidden">
-      {/* 背景装饰 */}
+      {/* Background decorations */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-20 left-10 opacity-[0.03]">
           <BaguaRing className="w-64 h-64 text-[#B8925A]" />
@@ -166,13 +161,13 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
               <TaiChiSymbol className="w-6 h-6 text-[#B8925A]" />
             </motion.div>
             <span className="text-[#1A0F05] tracking-[0.2em] text-sm font-serif">
-              {locale === 'zh' ? '天命玄机' : 'Tianming Secrets'}
+              {brand.name}
             </span>
           </Link>
           <div className="flex items-center gap-3">
             <LanguageSwitcher locale={locale} locked />
             <span className="text-[#1A0F05]/40 text-xs">
-              {dictionary.generatedAt}: {new Date(report.createdAt).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US')}
+              {dictionary.generatedAt}: {new Date(report.createdAt).toLocaleString('en-US')}
             </span>
           </div>
         </div>
@@ -205,14 +200,14 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
             <Divider />
           </div>
 
-          {/* 基本信息卡片 */}
+          {/* Summary card */}
           <motion.div
             className="mb-8 bg-white/70 backdrop-blur-sm border border-[#B8925A]/10 shadow-sm overflow-hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            {/* 第一行：基本信息 */}
+            {/* Row 1: profile */}
             <div className="grid grid-cols-3 md:grid-cols-6 border-b border-[#B8925A]/10">
               <div className="p-3 text-center border-r border-[#B8925A]/10">
                 <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.gender}</p>
@@ -236,22 +231,22 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
               </div>
               <div className="p-3 text-center border-t md:border-t-0 border-[#B8925A]/10">
                 <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.lunarDate}</p>
-                <p className="text-[#1A0F05] font-medium text-xs">{astrolabe?.lunarDate || '-'}</p>
+                <p className="text-[#1A0F05] font-medium text-xs">{formatLunarDate(astrolabe?.rawDates, astrolabe?.lunarDate)}</p>
               </div>
             </div>
 
-            {/* 第二行：命盘核心信息 */}
+            {/* Row 2: chart highlights */}
             <div className="grid grid-cols-4 border-b border-[#B8925A]/10 bg-[#F7F3EC]/30">
               <div className="p-3 text-center border-r border-[#B8925A]/10">
                 <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.lifePalace}</p>
                 <p className="text-[#8B0000] font-medium text-sm">{
-                  palaces.find((p) => p.name === '命宫')?.majorStars?.map((s) => s.name).join('·') || (locale === 'zh' ? '空宫' : 'No major stars')
+                  lifePalace?.majorStars?.map((s) => s.name).join('·') || 'No major stars'
                 }</p>
               </div>
               <div className="p-3 text-center border-r border-[#B8925A]/10">
                 <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.bodyPalace}</p>
                 <p className="text-[#1A0F05] font-medium text-sm">{
-                  palaces.find((p) => p.name === '身宫')?.majorStars?.map((s) => s.name).join('·') || (locale === 'zh' ? '空宫' : 'No major stars')
+                  bodyPalace?.majorStars?.map((s) => s.name).join('·') || 'No major stars'
                 }</p>
               </div>
               <div className="p-3 text-center border-r border-[#B8925A]/10">
@@ -265,14 +260,14 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
             </div>
           </motion.div>
 
-          {/* 12宫命盘 */}
+          {/* 12-palace chart */}
           <motion.div
             className="relative border-2 border-[#B8925A]/30 bg-white shadow-xl"
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            {/* 命盘标题 */}
+            {/* Chart header */}
             <div className="bg-gradient-to-r from-[#1A0F05] via-[#2D1F15] to-[#1A0F05] py-4 text-center relative overflow-hidden">
               <div className="absolute inset-0 opacity-10">
                 <CloudPattern className="w-full h-full text-[#B8925A]" />
@@ -284,13 +279,13 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
               </div>
             </div>
 
-            {/* 12宫格 */}
+            {/* 12-palace grid */}
             <div className="grid grid-cols-4">
               {renderGrid()}
             </div>
           </motion.div>
 
-          {/* 图例说明 - 打印时隐藏 */}
+          {/* Legend (hidden in print) */}
           <motion.div
             className="no-print mt-6 p-4 bg-[#1A0F05]/5 text-center"
             initial={{ opacity: 0 }}
@@ -300,28 +295,28 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
             <div className="flex flex-wrap justify-center gap-4 md:gap-6 text-xs text-[#1A0F05]/50">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 bg-gradient-to-br from-[#8B0000]/10 to-[#8B0000]/5 text-[#8B0000] text-[10px] rounded">{dictionary.legendMain}</span>
-                <span>{locale === 'zh' ? '红色' : 'Red'}</span>
+                <span>Red</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[#1A0F05]/70 text-[10px]">{dictionary.legendMinor}</span>
-                <span>{locale === 'zh' ? '黑色' : 'Black'}</span>
+                <span>Black</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[#1A0F05]/50 text-[9px]">{dictionary.legendAdj}</span>
-                <span>{locale === 'zh' ? '浅色' : 'Muted'}</span>
+                <span>Muted</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[#8B0000] text-[9px] font-medium">{dictionary.legendDecadal}</span>
-                <span>{locale === 'zh' ? '右上角红色数字' : 'Top-right red numbers'}</span>
+                <span>Top-right red numbers</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[#B8925A] text-[8px]">{dictionary.legendSpirits}</span>
-                <span>{locale === 'zh' ? '底部神煞提示' : 'Lower symbolic markers'}</span>
+                <span>Lower symbolic markers</span>
               </div>
             </div>
           </motion.div>
 
-          {/* 获取命理解读 - 温暖金色系 - 打印时隐藏 */}
+          {/* Unlock reading (hidden in print) */}
           <motion.div
             className="no-print mt-10 text-center"
             initial={{ opacity: 0, y: 10 }}
@@ -329,7 +324,7 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
             transition={{ duration: 0.5, delay: 0.6 }}
           >
             <div className="inline-block p-6 bg-gradient-to-br from-[#FDF8F0] via-[#F9F3E8] to-[#F5EDE0] border-2 border-[#B8925A]/30 text-[#1A0F05] relative overflow-hidden shadow-lg">
-              {/* 装饰 */}
+              {/* Accent */}
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#B8925A]/50 to-transparent" />
 
               <div className="relative">
@@ -391,7 +386,7 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
             </div>
           </motion.div>
 
-          {/* Actions - 打印时隐藏 */}
+          {/* Actions (hidden in print) */}
           <div className="no-print mt-8 flex flex-col md:flex-row items-center justify-center gap-4">
             <Link
               href={getLocalizedPath(locale)}
@@ -409,7 +404,7 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
             </button>
           </div>
 
-          {/* Disclaimer - 打印时隐藏 */}
+          {/* Disclaimer (hidden in print) */}
           <div className="no-print mt-10 pt-6 border-t border-[#B8925A]/10">
             <p className="text-center text-[#1A0F05]/25 text-xs tracking-wide leading-relaxed">
               {dictionary.disclaimer}
@@ -423,10 +418,10 @@ export default function ChartDisplay({ locale, report }: ChartDisplayProps) {
         <div className="max-w-6xl mx-auto flex flex-col items-center gap-3">
           <div className="flex items-center gap-3">
             <TaiChiSymbol className="w-4 h-4 text-[#B8925A] opacity-50" />
-            <span className="text-[#1A0F05]/30 text-xs tracking-[0.2em]">{locale === 'zh' ? '天命玄机' : 'Tianming Secrets'}</span>
+            <span className="text-[#1A0F05]/30 text-xs tracking-[0.2em]">{brand.name}</span>
           </div>
           <p className="text-[#1A0F05]/20 text-xs tracking-wider">
-            © 2025 {locale === 'zh' ? '天命玄机' : 'Tianming Secrets'} · Taoist Metaphysics
+            © 2025 {brand.name} · Taoist Metaphysics
           </p>
         </div>
       </footer>

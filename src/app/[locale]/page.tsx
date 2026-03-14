@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: LocaleHomePageProps): Promise
     openGraph: {
       title: dictionary.meta.title,
       description: dictionary.meta.description,
-      locale: locale === 'zh' ? 'zh_CN' : 'en_US',
+      locale: 'en_US',
     },
     twitter: {
       title: dictionary.meta.title,

@@ -2,16 +2,16 @@ export function BaguaBackground({ className }: { className?: string }) {
   const cx = 400;
   const cy = 400;
 
-  // Later Heaven (后天八卦) arrangement, starting from South (top in Chinese cosmo)
+  // Later Heaven arrangement, starting from South (top).
   const trigrams = [
-    { name: '离', char: '☲', angle: 0, lines: [true, false, true] },
-    { name: '坤', char: '☷', angle: 45, lines: [false, false, false] },
-    { name: '兑', char: '☱', angle: 90, lines: [false, true, true] },
-    { name: '乾', char: '☰', angle: 135, lines: [true, true, true] },
-    { name: '坎', char: '☵', angle: 180, lines: [false, true, false] },
-    { name: '艮', char: '☶', angle: 225, lines: [true, false, false] },
-    { name: '震', char: '☳', angle: 270, lines: [false, false, true] },
-    { name: '巽', char: '☴', angle: 315, lines: [true, true, false] },
+    { name: 'Li', char: '☲', angle: 0, lines: [true, false, true] },
+    { name: 'Kun', char: '☷', angle: 45, lines: [false, false, false] },
+    { name: 'Dui', char: '☱', angle: 90, lines: [false, true, true] },
+    { name: 'Qian', char: '☰', angle: 135, lines: [true, true, true] },
+    { name: 'Kan', char: '☵', angle: 180, lines: [false, true, false] },
+    { name: 'Gen', char: '☶', angle: 225, lines: [true, false, false] },
+    { name: 'Zhen', char: '☳', angle: 270, lines: [false, false, true] },
+    { name: 'Xun', char: '☴', angle: 315, lines: [true, true, false] },
   ];
 
   const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -143,7 +143,7 @@ export function BaguaBackground({ className }: { className?: string }) {
         );
       })}
 
-      {/* Trigram Chinese names */}
+      {/* Trigram names */}
       {trigrams.map(({ name, angle }) => {
         const rad = toRad(angle);
         const nameR = 180;

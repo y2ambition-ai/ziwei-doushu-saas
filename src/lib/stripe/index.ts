@@ -1,6 +1,6 @@
 /**
- * Stripe 集成模块
- * Payment processing for ZiWei SaaS
+ * Stripe integration module.
+ * Payment processing for Zi Wei Dou Shu SaaS.
  */
 
 import Stripe from 'stripe';
@@ -39,8 +39,8 @@ export interface CheckoutSessionOutput {
 
 const PRICE_AMOUNT = 199; // $1.99 in cents
 const PRICE_CURRENCY = 'usd';
-const PRODUCT_NAME = '紫微斗数命盘解读报告';
-const PRODUCT_DESCRIPTION = 'AI 驱动的紫微斗数命盘分析与人生指引';
+const PRODUCT_NAME = 'Zi Wei Dou Shu Premium Reading';
+const PRODUCT_DESCRIPTION = 'AI-guided Zi Wei Dou Shu chart interpretation and life direction.';
 
 // ─── Main Functions ────────────────────────────────────────────────────────────
 
@@ -86,6 +86,7 @@ export async function createCheckoutSession(
     customer: customerId,
     customer_creation: customerId ? undefined : 'always',
     customer_email: customerId ? undefined : input.email,
+    locale: 'en',
     payment_method_types: ['card'],
     line_items: [
       {

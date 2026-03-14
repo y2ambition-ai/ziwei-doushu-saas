@@ -1,9 +1,6 @@
 /**
- * Stripe Checkout Session API
- * POST /api/checkout
- *
- * 支持7天内免费复用：同一邮箱+相同参数，7天内直接查看已有结果
- * 注意：免费复用时不会重新生成报告，不会发送邮件
+ * Stripe Checkout Session API (POST /api/checkout).
+ * Reuse paid reports within 7 days for the same inputs.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -12,13 +9,13 @@ import {
   createMockCheckoutSession,
 } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
-import { normalizeLocale } from '@/lib/i18n/config';
+import { Locale, normalizeLocale } from '@/lib/i18n/config';
 import { resolveStoredReportLocale, setStoredReportLocale } from '@/lib/report-preferences';
 import { getTempReport, updateTempReport } from '@/lib/temp-report-store';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const FREE_REUSE_DAYS = 7; // 7天内免费复用
+const FREE_REUSE_DAYS = 7; // Free reuse window in days.
 
 // ─── Request Schema ────────────────────────────────────────────────────────────
 
@@ -29,17 +26,16 @@ interface CheckoutRequest {
   birthTime: number;
   birthMinute: number;
   birthCity: string;
-  reportId: string; // 当前报告ID
+  reportId: string; // Current report ID
   locale?: string;
 }
 
 // ─── Helper: Check 7-day free reuse ───────────────────────────────────────────
 
 /**
- * 检查是否有7天内已生成AI报告的相同参数报告
- * 注意：只是查找已有结果，不会重新调用API或发邮件
+ * Check for a paid report within the 7-day reuse window.
  */
-async function getValidPaidReport(body: CheckoutRequest, locale: 'en' | 'zh'): Promise<{
+async function getValidPaidReport(body: CheckoutRequest, locale: Locale): Promise<{
   found: boolean;
   reportId?: string;
   aiReport?: string;
@@ -59,7 +55,7 @@ async function getValidPaidReport(body: CheckoutRequest, locale: 'en' | 'zh'): P
           gte: validTime,
         },
         aiReport: {
-          not: null, // 确保有AI报告
+          not: null, // Ensure report exists
         },
       },
       orderBy: {
@@ -104,7 +100,7 @@ export async function POST(request: NextRequest) {
     // Validate input
     if (!body.email || !body.gender || !body.birthDate || !body.birthCity) {
       return NextResponse.json(
-        { error: '请填写完整的表单信息' },
+        { error: 'Please complete all required fields.' },
         { status: 400 }
       );
     }
@@ -116,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     if (!currentReport) {
       return NextResponse.json(
-        { error: '报告不存在' },
+        { error: 'Report not found.' },
         { status: 404 }
       );
     }
@@ -133,7 +129,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 1. 检查7天内是否有相同参数的已有AI报告（免费复用，不发邮件）
+    // 1. Check free reuse window (no email, no re-generation)
     const validPaid = await getValidPaidReport(body, locale);
     if (validPaid.found && validPaid.reportId) {
       console.log('Found valid paid report for:', body.email, 'days remaining:', validPaid.daysRemaining);
@@ -145,11 +141,11 @@ export async function POST(request: NextRequest) {
         aiReport: validPaid.aiReport,
         coreIdentity: validPaid.coreIdentity,
         daysRemaining: validPaid.daysRemaining,
-        message: `您在${validPaid.daysRemaining}天内已生成过相同参数的解读，本次免费查看`,
+        message: `A matching paid report exists. ${validPaid.daysRemaining} days remaining in the reuse window.`,
       });
     }
 
-    // 2. 没有有效报告，需要生成新的AI解读
+    // 2. No valid paid report, proceed to checkout
     // Check if we have Stripe key (production mode)
     const hasStripeKey = process.env.STRIPE_SECRET_KEY &&
       process.env.STRIPE_SECRET_KEY !== 'sk_test_mock';
@@ -174,7 +170,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Checkout error:', error);
-    const errorMessage = error instanceof Error ? error.message : '支付创建失败';
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create checkout session.';
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }

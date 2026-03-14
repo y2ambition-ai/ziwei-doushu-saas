@@ -3,10 +3,10 @@ import Stripe from 'stripe';
 
 import { prisma } from '@/lib/db';
 import { normalizeLocale } from '@/lib/i18n/config';
-import { generateReport, generateMockReport, GenerateReportInput } from '@/lib/llm';
 import { captureApiError, capturePaymentError } from '@/lib/monitoring';
 import { resolveStoredReportLocale, setStoredReportLocale } from '@/lib/report-preferences';
 import { verifyWebhookSignature } from '@/lib/stripe';
+import { getTempReport, updateTempReport } from '@/lib/temp-report-store';
 import { generateAstrolabe } from '@/lib/ziwei/wrapper';
 
 export async function POST(request: NextRequest) {
@@ -68,78 +68,86 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  const existingReport = await prisma.report.findUnique({
-    where: { id: reportId },
-  });
+  type ReportLike = {
+    id: string;
+    email: string;
+    gender: string;
+    birthDate: string;
+    birthTime: number;
+    birthMinute?: number;
+    birthCity: string;
+    longitude: number;
+    latitude?: number;
+    parsedData: string | null;
+    rawAstrolabe: string | null;
+    aiReport: string | null;
+    coreIdentity: string | null;
+    paidAt: Date | null;
+    completedAt: Date | null;
+  };
 
-  if (!existingReport) {
+  let report: ReportLike | null = null;
+  let isTempReport = false;
+
+  try {
+    report = await prisma.report.findUnique({
+      where: { id: reportId },
+    }) as ReportLike | null;
+  } catch (error) {
+    console.warn(`Database lookup failed for report ${reportId}:`, error);
+  }
+
+  if (!report) {
+    const tempReport = getTempReport(reportId);
+    if (tempReport) {
+      report = tempReport as ReportLike;
+      isTempReport = true;
+    }
+  }
+
+  if (!report) {
     console.error(`Report not found for checkout session: ${reportId}`);
     return;
   }
 
-  const paidAt = existingReport.paidAt || new Date();
-  const locale = resolveStoredReportLocale(existingReport, fallbackLocale);
-  const parsedData = setStoredReportLocale(existingReport.parsedData, locale);
+  const paidAt = report.paidAt || new Date();
+  const locale = resolveStoredReportLocale(report, fallbackLocale);
+  const parsedData = setStoredReportLocale(report.parsedData, locale);
 
-  if (existingReport.aiReport && existingReport.aiReport.length > 100) {
+  const persistReport = async (data: Partial<ReportLike>) => {
+    if (isTempReport) {
+      updateTempReport(reportId, data);
+      return;
+    }
+
     await prisma.report.update({
       where: { id: reportId },
-      data: {
-        parsedData,
-        paidAt,
-        completedAt: existingReport.completedAt || new Date(),
-      },
+      data,
+    });
+  };
+
+  if (report.aiReport && report.aiReport.length > 100) {
+    await persistReport({
+      parsedData,
+      paidAt,
+      completedAt: report.completedAt || new Date(),
     });
     return;
   }
 
   const astrolabe = generateAstrolabe({
-    birthDate: existingReport.birthDate,
-    birthTime: existingReport.birthTime,
-    birthMinute: existingReport.birthMinute,
-    gender: existingReport.gender as 'male' | 'female',
-    longitude: existingReport.longitude || 120,
-    latitude: existingReport.latitude || 0,
-    birthCity: existingReport.birthCity || '',
+    birthDate: report.birthDate,
+    birthTime: report.birthTime,
+    birthMinute: report.birthMinute ?? 0,
+    gender: report.gender as 'male' | 'female',
+    longitude: report.longitude || 120,
+    latitude: report.latitude || 0,
+    birthCity: report.birthCity || '',
   });
 
-  await prisma.report.update({
-    where: { id: reportId },
-    data: {
-      parsedData,
-      paidAt,
-      rawAstrolabe: existingReport.rawAstrolabe || JSON.stringify(astrolabe.raw),
-    },
-  });
-
-  const llmInput: GenerateReportInput = {
-    email: existingReport.email,
-    gender: existingReport.gender,
-    birthDate: existingReport.birthDate,
-    birthTime: astrolabe.parsed.solarTime.shichen,
-    birthCity: existingReport.birthCity || '',
-    mingGong: astrolabe.parsed.mingGong.majorStars.join('·') || '空宫',
-    wuXingJu: astrolabe.parsed.wuXingJu,
-    chineseZodiac: astrolabe.parsed.chineseZodiac,
-    zodiac: astrolabe.parsed.zodiac,
-    siZhu: astrolabe.parsed.siZhu,
-    palaces: astrolabe.parsed.palaces,
-    rawAstrolabe: astrolabe.raw,
-    locale,
-  };
-
-  const hasApiKey = Boolean(process.env.DOUBAO_API_KEY && process.env.DOUBAO_API_KEY.length > 0);
-  const reportResult = hasApiKey ? await generateReport(llmInput) : generateMockReport(llmInput);
-
-  await prisma.report.update({
-    where: { id: reportId },
-    data: {
-      coreIdentity: reportResult.coreIdentity,
-      aiReport: reportResult.report,
-      parsedData,
-      paidAt,
-      completedAt: new Date(),
-      rawAstrolabe: existingReport.rawAstrolabe || JSON.stringify(astrolabe.raw),
-    },
+  await persistReport({
+    parsedData,
+    paidAt,
+    rawAstrolabe: report.rawAstrolabe || JSON.stringify(astrolabe.raw),
   });
 }

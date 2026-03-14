@@ -19,6 +19,9 @@ export function LanguageSwitcher({
   className = '',
   locked = false,
 }: LanguageSwitcherProps) {
+  if (locales.length <= 1) {
+    return null;
+  }
   const pathname = usePathname();
   const router = useRouter();
   const currentPath = pathname || '/';
@@ -58,7 +61,7 @@ export function LanguageSwitcher({
                     : 'text-[#6D5437] hover:bg-[#B8925A]/10'
               }`}
             >
-              {item.locale === 'en' ? 'EN' : '中文'}
+              {item.locale.toUpperCase()}
             </button>
           );
         })}

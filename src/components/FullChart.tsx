@@ -1,6 +1,5 @@
 /**
- * 完整版命盘组件
- * 用于报告页面显示
+ * Full chart component for the report view.
  */
 
 import React from 'react';
@@ -8,7 +7,7 @@ import { motion } from 'motion/react';
 
 import { Locale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
-import { localizeChineseZodiac, localizeGender } from '@/lib/i18n/chart';
+import { extractSiZhu, formatLunarDate, localizeChineseZodiac, localizeGender } from '@/lib/i18n/chart';
 import {
   PalaceData,
   RawAstrolabe,
@@ -18,6 +17,8 @@ import {
   CloudPattern,
   getShichenName,
   getWesternZodiac,
+  getBodyPalace,
+  getLifePalace,
   getPalaceByBranch,
   PalaceCell,
 } from './chart-shared';
@@ -38,6 +39,9 @@ interface FullChartProps {
 export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime, locale = 'en' }: FullChartProps) {
   const palaces = rawAstrolabe?.palaces || [];
   const dictionary = getDictionary(locale).chart;
+  const lifePalace = getLifePalace(palaces);
+  const bodyPalace = getBodyPalace(palaces);
+  const siZhu = extractSiZhu(rawAstrolabe?.rawDates, rawAstrolabe?.chineseDate);
 
   const renderGrid = () => {
     const cells: React.ReactNode[] = [];
@@ -64,26 +68,19 @@ export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime, 
     return cells;
   };
 
-  // 解析四柱
-  const chineseDate = rawAstrolabe?.chineseDate || '';
-  const siZhuParts = chineseDate.split(' ');
-  const siZhu = siZhuParts.length === 4
-    ? { year: siZhuParts[0], month: siZhuParts[1], day: siZhuParts[2], hour: siZhuParts[3] }
-    : { year: '', month: '', day: '', hour: '' };
-
   const displayGender = localizeGender(locale, rawAstrolabe?.gender || gender);
   const shichenName = birthTime !== undefined ? getShichenName(birthTime, locale) : '';
 
   return (
     <div className="w-full">
-      {/* 基本信息卡片 */}
+      {/* Summary card */}
       <motion.div
         className="mb-6 bg-white/70 backdrop-blur-sm border border-[#B8925A]/10 shadow-sm overflow-hidden"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        {/* 第一行：基本信息 */}
+        {/* Row 1: profile */}
         <div className="grid grid-cols-3 md:grid-cols-6 border-b border-[#B8925A]/10">
           <div className="p-3 text-center border-r border-[#B8925A]/10">
             <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.gender}</p>
@@ -107,22 +104,22 @@ export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime, 
           </div>
           <div className="p-3 text-center border-t md:border-t-0 border-[#B8925A]/10">
             <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.lunarDate}</p>
-            <p className="text-[#1A0F05] font-medium text-xs">{rawAstrolabe?.lunarDate || '-'}</p>
+            <p className="text-[#1A0F05] font-medium text-xs">{formatLunarDate(rawAstrolabe?.rawDates, rawAstrolabe?.lunarDate)}</p>
           </div>
         </div>
 
-        {/* 第二行：命盘核心信息 */}
+        {/* Row 2: chart highlights */}
         <div className="grid grid-cols-4 bg-[#F7F3EC]/30">
           <div className="p-3 text-center border-r border-[#B8925A]/10">
             <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.lifePalace}</p>
             <p className="text-[#8B0000] font-medium text-sm">{
-              palaces.find((p) => p.name === '命宫')?.majorStars?.map((s) => s.name).join('·') || (locale === 'zh' ? '空宫' : 'No major stars')
+              lifePalace?.majorStars?.map((s) => s.name).join('·') || 'No major stars'
             }</p>
           </div>
           <div className="p-3 text-center border-r border-[#B8925A]/10">
             <p className="text-[#B8925A] text-[10px] tracking-wider mb-1">{dictionary.bodyPalace}</p>
             <p className="text-[#1A0F05] font-medium text-sm">{
-              palaces.find((p) => p.name === '身宫')?.majorStars?.map((s) => s.name).join('·') || (locale === 'zh' ? '空宫' : 'No major stars')
+              bodyPalace?.majorStars?.map((s) => s.name).join('·') || 'No major stars'
             }</p>
           </div>
           <div className="p-3 text-center border-r border-[#B8925A]/10">
@@ -138,14 +135,14 @@ export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime, 
         </div>
       </motion.div>
 
-      {/* 12宫命盘 */}
+      {/* 12-palace chart */}
       <motion.div
         className="relative border-2 border-[#B8925A]/30 bg-white shadow-xl"
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6, delay: 0.2 }}
       >
-        {/* 命盘标题 */}
+        {/* Chart header */}
         <div className="bg-gradient-to-r from-[#1A0F05] via-[#2D1F15] to-[#1A0F05] py-3 text-center relative overflow-hidden">
           <div className="absolute inset-0 opacity-10">
             <CloudPattern className="w-full h-full text-[#B8925A]" />
@@ -157,13 +154,13 @@ export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime, 
           </div>
         </div>
 
-        {/* 12宫格 */}
+        {/* 12-palace grid */}
         <div className="grid grid-cols-4">
           {renderGrid()}
         </div>
       </motion.div>
 
-      {/* 图例说明 */}
+      {/* Legend */}
       <motion.div
         className="mt-4 p-3 bg-[#1A0F05]/5 text-center"
         initial={{ opacity: 0 }}
@@ -173,23 +170,23 @@ export default function FullChart({ rawAstrolabe, gender, birthDate, birthTime, 
         <div className="flex flex-wrap justify-center gap-4 md:gap-6 text-xs text-[#1A0F05]/50">
           <div className="flex items-center gap-2">
             <span className="px-2 py-0.5 bg-gradient-to-br from-[#8B0000]/10 to-[#8B0000]/5 text-[#8B0000] text-[10px] rounded">{dictionary.legendMain}</span>
-            <span>{locale === 'zh' ? '红色' : 'Red'}</span>
+            <span>Red</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[#1A0F05]/70 text-[10px]">{dictionary.legendMinor}</span>
-            <span>{locale === 'zh' ? '黑色' : 'Black'}</span>
+            <span>Black</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[#1A0F05]/50 text-[9px]">{dictionary.legendAdj}</span>
-            <span>{locale === 'zh' ? '浅色' : 'Muted'}</span>
+            <span>Muted</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[#8B0000] text-[9px] font-medium">{dictionary.legendDecadal}</span>
-            <span>{locale === 'zh' ? '右上角红色数字' : 'Top-right red numbers'}</span>
+            <span>Top-right red numbers</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[#B8925A] text-[8px]">{dictionary.legendSpirits}</span>
-            <span>{locale === 'zh' ? '底部神煞提示' : 'Lower symbolic markers'}</span>
+            <span>Lower symbolic markers</span>
           </div>
         </div>
       </motion.div>

@@ -1,6 +1,5 @@
 /**
- * 获取报告 API
- * GET /api/report/[id]
+ * Report retrieval API (GET /api/report/[id]).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -17,7 +16,7 @@ export async function GET(
 
     if (!report) {
       return NextResponse.json(
-        { error: '报告不存在' },
+        { error: 'Report not found.' },
         { status: 404 }
       );
     }
@@ -46,7 +45,7 @@ export async function GET(
   } catch (error) {
     console.error('Get report error:', error);
     return NextResponse.json(
-      { error: '获取报告失败' },
+      { error: 'Failed to fetch report.' },
       { status: 500 }
     );
   }

@@ -88,7 +88,7 @@
 | 命盘读取 | `src/lib/report-view.ts` | 服务端页面共享报告标准化读取 |
 | 本地兜底 | `src/lib/temp-report-store.ts` | 无库场景的临时报告存储 |
 | Stripe | `src/lib/stripe/index.ts` | Checkout session、回跳 URL |
-| AI 解读 | `src/lib/llm/index.ts` / `src/app/api/report/ai-generate/route.ts` | 双语 prompt 与生成门槛 |
+| AI 解读 | `src/lib/llm/index.ts` / `src/app/api/report/ai-generate/route.ts` | English report contract, LLM config, and generation gate |
 | 命盘渲染 | `src/components/FullChart.tsx` / `src/components/chart-shared.tsx` | 共享命盘组件 |
 
 ## 环境变量速查
@@ -97,9 +97,12 @@
 |--------|------|
 | `DATABASE_URL` | 主数据库连接 |
 | `DIRECT_URL` | Prisma / Vercel 直连 |
-| `DOUBAO_API_KEY` | 豆包 API |
-| `DOUBAO_BASE_URL` | 豆包兼容接口 |
-| `DOUBAO_MODEL` | 模型名 |
+| `OPENAI_API_KEY` | 首选的 OpenAI-compatible API key |
+| `OPENAI_BASE_URL` | 首选的 OpenAI-compatible base URL（根路径会自动归一到 `/v1`） |
+| `OPENAI_MODEL` | 首选模型名 |
+| `DOUBAO_API_KEY` | 兼容旧部署的 legacy fallback |
+| `DOUBAO_BASE_URL` | 兼容旧部署的 legacy fallback |
+| `DOUBAO_MODEL` | 兼容旧部署的 legacy fallback |
 | `STRIPE_SECRET_KEY` | Stripe 服务端密钥 |
 | `STRIPE_WEBHOOK_SECRET` | Webhook 验签密钥 |
 | `NEXT_PUBLIC_URL` | 站点外部 URL |

@@ -1,75 +1,76 @@
 # Repository Guidelines
 
-## 项目快照
+## Project Snapshot
 
-- 产品：`天命玄机 / Tianming Secrets`
-- 技术栈：Next.js 15 App Router、React 19、TypeScript、Prisma、Stripe + AI
-- 默认语言：`en`
-- 中文入口：`/zh`
-- 线上正式域名：`https://ziwei-doushu-saas.vercel.app`
-- 当前支付路径：Stripe Checkout + Webhook + 本地化 Success 页
-- 最近清理时间：`2026-03-12`
+- Product: `Tianming Secrets`
+- Tech stack: Next.js 15 App Router, React 19, TypeScript, Prisma, Stripe + AI
+- Default locale: `en`
+- Chinese entry: removed (English-only site)
+- Production domain: `https://ziwei-doushu-saas.vercel.app`
+- Current payment flow: Stripe Checkout + Webhook + localized Success page
+- Last cleanup: `2026-03-12`
 
-## 目录职责
+## Directory Ownership
 
-- `src/app/`：页面、布局、API 路由
-- `src/app/[locale]/`：本地化入口页、命盘页、结果页、成功页
-- `src/app/chart/[id]/`：命盘共享实现
-- `src/app/result/[id]/`：结果页共享实现
-- `src/components/`：首页、成功页、命盘共享组件、语言切换等
-- `src/lib/i18n/`：语言配置、字典、路由与格式化
-- `src/lib/stripe/`：支付会话与回跳 URL
-- `src/lib/llm/`：AI 解读 prompt 与 mock 输出
-- `src/lib/report-preferences.ts`：报告语言锁定、旧数据语言推断与偏好回写
-- `src/lib/report-view.ts`：统一报告读取与标准化
-- `src/lib/temp-report-store.ts`：本地无库兜底的临时报告存储
-- `prisma/schema.prisma`：`Customer / Order / Report` 数据模型
-- `tests/`：Vitest 测试
+- `src/app/`: pages, layouts, API routes
+- `src/app/[locale]/`: localized landing, chart, result, and success pages
+- `src/app/chart/[id]/`: shared chart implementation
+- `src/app/result/[id]/`: shared result implementation
+- `src/components/`: homepage, success page, shared chart components, language switcher
+- `src/lib/i18n/`: locale config, dictionaries, routing, formatting
+- `src/lib/stripe/`: checkout session and return URLs
+- `src/lib/llm/`: AI interpretation prompt and mock output
+- `src/lib/report-preferences.ts`: report locale lock, legacy locale inference, preference write-back
+- `src/lib/report-view.ts`: unified report read and normalization
+- `src/lib/temp-report-store.ts`: local no-DB fallback storage
+- `prisma/schema.prisma`: `Customer / Order / Report` data models
+- `tests/`: Vitest tests
 
-## 当前主流程
+## Current Flow
 
-1. 访问 `/`，自动重定向到 `/${defaultLocale}`，当前默认是 `/en`
-2. `src/app/[locale]/page.tsx` 渲染本地化首页 `src/components/home/HomePage.tsx`
-3. 首页表单提交到 `src/app/api/report/generate/route.ts` 创建基础 `Report`
-4. 用户进入 `/${locale}/chart/[id]` 查看免费命盘
-5. `src/app/api/checkout/route.ts` 负责复用已支付报告或发起 Stripe Checkout
-6. 支付完成后返回 `/${locale}/success?report_id=...`
-7. `src/app/api/webhook/route.ts` 回写原始 `Report`，不再新建重复记录
-8. `src/app/api/report/[id]/route.ts` 为成功页轮询和结果页读取提供状态
-9. `/${locale}/result/[id]` 只会在支付已完成或 mock 场景下触发高级 AI 解读
+1. Visit `/`, auto-redirect to `/${defaultLocale}` (currently `/en`)
+2. `src/app/[locale]/page.tsx` renders the localized landing page `src/components/home/HomePage.tsx`
+3. The home form submits to `src/app/api/report/generate/route.ts` to create the base `Report`
+4. The home page calls `src/app/api/report/[id]/route.ts` for status and triggers Stripe Checkout via `src/app/api/checkout/route.ts` (or reuse/Mock)
+5. Stripe returns to `/${locale}/success?session_id=...&report_id=...`
+6. `src/app/api/webhook/route.ts` updates the original `Report` without creating duplicates
+7. `src/app/api/report/[id]/route.ts` powers success polling and result fetching
+8. `/${locale}/result/[id]` only generates the premium AI reading after payment or mock mode
+9. `/${locale}/chart/[id]` remains the chart display page (reachable from other entry points)
 
-## UI/UX 设计规范 (2026-03-12 更新)
+## UI/UX Design Spec (Updated 2026-03-12)
 
-- **首页布局**：采用“双屏沉浸式”设计（Two-Viewport Layout）。第一屏为 Hero 展示，第二屏为表单输入。
-- **视觉风格**：极简“新中式”美学。统一使用浅色宣纸背景，深墨色/咖啡色文字确保高清晰度。
-- **面板质感**：采用玻璃态（Glassmorphism）设计，配合微弱的金色发光阴影，提升层次感。
-- **排版准则**：
-  - 核心信息高度集中，移除所有冗余营销词汇与不必要的引导按钮。
-  - 左右分栏比例统一为 `1fr : 1.4fr`，确保首屏太极图与次屏表单区域在视觉宽度上完美对齐。
-  - 标题精简，追求克制而有力的表达（如单行主标题）。
-- **可访问性**：确保所有页面的文字对比度，特别是操作按钮（如“解锁高级解读”）和重要提示，背景色需与文字有明确区分。
+- **Homepage layout**: Two-Viewport Layout. First viewport is the hero, second viewport is the input form.
+- **Visual style**: Minimal modern Chinese aesthetic. Use a light rice-paper background with deep ink/coffee text for clarity.
+- **Panel feel**: Glassmorphism with subtle gold glow to add depth.
+- **Typography rules**:
+  - Concentrate core information, remove marketing fluff and extra CTA buttons.
+  - Keep the split ratio at `1fr : 1.4fr` so the hero Taiji and the form grid align.
+  - Titles stay concise and restrained (single-line headline).
+- **Accessibility**: Ensure contrast for all text, especially action buttons (e.g., "Unlock Full Reading") and critical notices.
 
-## 本地无库兜底
+## Local No-DB Fallback
 
-- 当 `DATABASE_URL` 缺失、无效或 Prisma 不可用时，部分本地预览链路会退化到 `src/lib/temp-report-store.ts`
-- 本地临时数据写入 `.local/temp-reports.json`
-- Vercel 运行时自动改用系统临时目录，避免把 `.next/cache` 构建缓存打进 Serverless Functions
-- 该兜底主要服务于本地预览和联调，不替代真实数据库、支付或 webhook 持久化
+- When `DATABASE_URL` is missing/invalid or Prisma is unavailable, local preview paths fall back to `src/lib/temp-report-store.ts`.
+- Local temp data writes to `.local/temp-reports.json`.
+- Vercel runtime uses system temp to avoid writing `.next/cache` into Serverless Functions.
+- This fallback is for local preview/testing only; it does not replace database or payment/webhook persistence.
+- In no-DB mode, webhook writeback updates the temp report to complete local Stripe testing.
 
-## 关键文件
+## Key Files
 
-- `src/components/home/HomePage.tsx`：首页落地页与表单（双屏架构）
-- `src/app/chart/[id]/ChartDisplay.tsx`：命盘页主实现，集成了支付跳转与 Mock 逻辑兜底
-- `src/app/result/[id]/ReportContent.tsx`：结果页主实现
-- `src/components/LanguageSwitcher.tsx`：适配浅色主题的本地化切换器
-- `src/lib/i18n/dictionaries.ts`：精简后的艺术化双语文案字典
-- `src/lib/llm/index.ts`：中英文报告 prompt、摘要提取、输出稳定性校验与重试
-- `tests/llm.test.ts`：LLM 输出合同与摘要提取的最小回归测试
-- `tests/report-preferences.test.ts`：报告语言锁定与旧数据回退逻辑测试
+- `src/components/home/HomePage.tsx`: landing page and form (two-viewport layout)
+- `src/app/chart/[id]/ChartDisplay.tsx`: chart page implementation with payment jump and mock fallback
+- `src/app/result/[id]/ReportContent.tsx`: result page implementation
+- `src/components/LanguageSwitcher.tsx`: locale switcher for light theme
+- `src/lib/i18n/dictionaries.ts`: English copy dictionary
+- `src/lib/llm/index.ts`: English report prompt, summary extraction, output validation + retry
+- `tests/llm.test.ts`: minimal regression test for output contract and summary extraction
+- `tests/report-preferences.test.ts`: locale lock and legacy fallback logic tests
 
-## 开发与验证
+## Development & Validation
 
-在仓库根目录执行：
+Run in repo root:
 
 - `pnpm install`
 - `pnpm dev`
@@ -77,29 +78,30 @@
 - `pnpm test -- --run`
 - `pnpm build`
 
-## 部署快照 (2026-03-12)
+## Deployment Snapshot (2026-03-12)
 
-- 最近一次发布分支：`release/locale-lock-age-neutral`
-- 最近一次发布提交：`b793b37d2`
-- Vercel Preview：`https://ziwei-doushu-saas-7lgsx6i63-y2ambition-ais-projects.vercel.app`
-- Vercel Production：`https://ziwei-doushu-saas.vercel.app`
-- 本次已修复 Vercel 函数体积超限问题；根因是本地无库兜底曾写入 `.next/cache`，现已改为本地 `.local/temp-reports.json` / Vercel 系统临时目录
-- 生产环境已确认 `DOUBAO_API_KEY`、`DOUBAO_MODEL`、`DOUBAO_BASE_URL`、`NEXT_PUBLIC_URL` 生效，线上中英文 AI 报告可真实生成
-- 生产环境尚未配置 Stripe 正式变量；未补齐 `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`STRIPE_PUBLISHABLE_KEY` 前，线上仍按无真实支付密钥的兜底逻辑运行
+- Latest release branch: `release/locale-lock-age-neutral`
+- Latest release commit: `b793b37d2`
+- Vercel Preview: `https://ziwei-doushu-saas-7lgsx6i63-y2ambition-ais-projects.vercel.app`
+- Vercel Production: `https://ziwei-doushu-saas.vercel.app`
+- The function size issue was fixed. Root cause: the local no-DB fallback wrote to `.next/cache`; now it uses `.local/temp-reports.json` or the Vercel system temp directory.
+- The codebase now prefers `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` and normalizes root URLs to `/v1`; legacy `DOUBAO_*` variables remain supported as fallback for older deployments.
+- Production Stripe keys are still missing. Without `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, production stays on the no-key fallback.
 
-## 文档约定
+## Documentation
 
-- `README.md`：产品与开发总览
-- `PROJECT_INDEX.md`：结构索引与关键路径映射
-- `AGENTS.md`：代理协作规范与仓库快照
+- `README.md`: product and development overview
+- `PROJECT_INDEX.md`: structure index and critical paths
+- `AGENTS.md`: agent collaboration rules and repository snapshot
 
-## 当前注意事项
+## Current Notes
 
-- **样式一致性**：修改任何页面背景或字体时，必须确保全站色调高度统一，避免出现突兀的色块断层。
-- **布局对齐**：首页的响应式网格必须保持上下两屏的 `max-width` 和 `grid-cols` 比例完全同步。
-- **支付逻辑**：`src/app/chart/[id]/ChartDisplay.tsx` 中的 `handleGetReading` 已包含 Mock 兜底逻辑，未配置密钥时会自动进入 AI 生成流程。
-- **报告语言契约**：`src/lib/llm/index.ts` 要求英文输出必须以 `Core Identity:` 开头、中文输出必须以 `核心身份：` 开头，并使用固定的 6 个章节标题；改 prompt 时必须同步检查摘要提取与结果页展示。
-- **报告语言锁定**：首次提交时的页面语言会写入报告偏好；之后 chart / success / result 页面与 AI 生成接口都必须以报告自带 locale 为准，不允许通过切换器或手改 URL 改语言。
-- **年龄与地域中性**：报告必须按人生阶段调整重点；儿童/青少年不得强写成人议题，高龄用户要优先健康与守成。所有表达必须全球通用，禁止出现高考、SAT、编制、A-Level、GCSE 等地域制度词。
-- 改支付链路时请同时检查：`src/app/api/checkout/route.ts`、`src/app/api/webhook/route.ts`、`src/lib/stripe/index.ts`
-- 改命盘逻辑时请同时检查：`src/lib/solar-time/index.ts`、`src/lib/ziwei/wrapper.ts`、`tests/astrolabe.test.ts`
+- **Style consistency**: keep global tone unified and avoid abrupt background or typography shifts.
+- **Layout alignment**: the homepage responsive grid must keep both viewports aligned for `max-width` and `grid-cols`.
+- **Payment flow**: `src/app/chart/[id]/ChartDisplay.tsx` `handleGetReading` includes a mock fallback when keys are missing.
+- **LLM runtime config**: runtime prefers project-local `.env.local` values for `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL` before inherited host environment variables, then falls back to legacy `DOUBAO_*`; root-only compatible bases are normalized to `/v1`.
+- **Report language contract**: `src/lib/llm/index.ts` requires English output to start with `Core Identity:` and use the fixed six section headings. Update summary extraction and result display if the prompt changes.
+- **Report locale lock**: the first submission locale is stored; chart/success/result/AI must follow the report locale and should not allow manual URL switching.
+- **Age and region neutrality**: reports must adapt to life stage; avoid region-specific systems (SAT, A-Level, etc.) and school exam references.
+- When changing payment flow, check: `src/app/api/checkout/route.ts`, `src/app/api/webhook/route.ts`, `src/lib/stripe/index.ts`
+- When changing chart logic, check: `src/lib/solar-time/index.ts`, `src/lib/ziwei/wrapper.ts`, `tests/astrolabe.test.ts`

@@ -6,29 +6,13 @@ import Link from 'next/link';
 
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import FullChart from '@/components/FullChart';
+import { RawAstrolabe, getLifePalace } from '@/components/chart-shared';
 import { Locale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { getLocalizedPath } from '@/lib/i18n/routes';
+import { extractSiZhu } from '@/lib/i18n/chart';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface RawAstrolabe {
-  palaces?: Array<{
-    name?: string;
-    heavenlyStem?: string;
-    earthlyBranch?: string;
-    majorStars?: { name: string; brightness?: string }[];
-    minorStars?: { name: string; brightness?: string }[];
-    adjectiveStars?: { name: string }[];
-    changsheng12?: string;
-    boshi12?: string;
-    decadal?: { range?: [number, number] };
-    ages?: number[];
-  }>;
-  chineseDate?: string;
-  fiveElementsClass?: string;
-  chineseZodiac?: string;
-}
 
 interface ReportData {
   id: string;
@@ -53,8 +37,13 @@ interface ReportContentProps {
 }
 
 const pendingInitialGenerations = new Set<string>();
+const chinesePattern = /[\u4e00-\u9fff]/;
 
-function sanitizeCoreIdentity(value: string | null | undefined, locale: Locale): string | null {
+function containsChinese(value: string): boolean {
+  return chinesePattern.test(value);
+}
+
+function sanitizeCoreIdentity(value: string | null | undefined): string | null {
   if (!value) {
     return null;
   }
@@ -62,16 +51,23 @@ function sanitizeCoreIdentity(value: string | null | undefined, locale: Locale):
   const trimmed = value
     .trim()
     .replace(/^Core Identity:\s*/i, '')
-    .replace(/^核心身份[:：]\s*/, '')
     .trim();
 
   if (!trimmed) {
     return null;
   }
 
-  const invalidPatterns = locale === 'zh'
-    ? [/^#{1,3}\s/, /^\d+[.)]\s/, /^以下为/, /^命格总论/, /^Core Chart Identity/i]
-    : [/^#{1,3}\s/, /^\d+[.)]\s/, /^Below is /i, /^Based on /i, /^Core Chart Identity$/i, /^命格总论/];
+  if (containsChinese(trimmed)) {
+    return null;
+  }
+
+  const invalidPatterns = [
+    /^#{1,3}\s/,
+    /^\d+[.)]\s/,
+    /^Below is /i,
+    /^Based on /i,
+    /^Core Chart Identity$/i,
+  ];
 
   if (invalidPatterns.some((pattern) => pattern.test(trimmed))) {
     return null;
@@ -198,32 +194,9 @@ function OrnamentalFrame({ children, className = '' }: { children: React.ReactNo
 
 // ─── Helper Functions ─────────────────────────────────────────────────────────
 
-function getShichenName(hour: number): string {
-  const shichenMap: Record<number, string> = {
-    0: '子时 (23:00-01:00)',
-    1: '丑时 (01:00-03:00)',
-    2: '寅时 (03:00-05:00)',
-    3: '卯时 (05:00-07:00)',
-    4: '辰时 (07:00-09:00)',
-    5: '巳时 (09:00-11:00)',
-    6: '午时 (11:00-13:00)',
-    7: '未时 (13:00-15:00)',
-    8: '申时 (15:00-17:00)',
-    9: '酉时 (17:00-19:00)',
-    10: '戌时 (19:00-21:00)',
-    11: '亥时 (21:00-23:00)',
-  };
-  const shichenIndex = hour === 23 ? 0 : Math.floor((hour + 1) / 2);
-  return shichenMap[shichenIndex] || '未知时辰';
-}
-
 function renderMarkdown(text: string) {
-  // 移除报告末尾的字数统计
-  let cleanedText = text.replace(/（报告全文共\s*\d+\s*字）\s*$/g, '');
-  cleanedText = cleanedText.replace(/\(全文共\s*\d+\s*字\)\s*$/g, '');
-  cleanedText = cleanedText.replace(/共\s*\d+\s*字\s*$/g, '');
-  cleanedText = cleanedText.replace(/^Core Identity:\s*.+\n*/i, '');
-  cleanedText = cleanedText.replace(/^核心身份[:：]\s*.+\n*/m, '');
+  // Remove duplicate core identity lines before rendering.
+  let cleanedText = text.replace(/^Core Identity:\s*.+\n*/i, '');
 
   return cleanedText.split('\n').map((line, i) => {
 
@@ -342,7 +315,7 @@ function renderMarkdown(text: string) {
 
 // ─── Loading Animation (Enhanced) ─────────────────────────────────────────────
 
-function LoadingAnimation({ locale, title, body, hint }: { locale: Locale; title: string; body: string; hint: string }) {
+function LoadingAnimation({ title, body, hint }: { title: string; body: string; hint: string }) {
   const [countdown, setCountdown] = useState(300);
   const [progress, setProgress] = useState(0);
 
@@ -392,13 +365,13 @@ function LoadingAnimation({ locale, title, body, hint }: { locale: Locale; title
       </div>
 
       <p className="text-[#8B4513] text-sm font-medium mb-8">
-        {locale === 'zh' ? '预计剩余时间：' : 'Estimated time remaining:'} {minutes}:{seconds.toString().padStart(2, '0')}
+        Estimated time remaining: {minutes}:{seconds.toString().padStart(2, '0')}
       </p>
 
       <div className="max-w-sm mx-auto p-5 bg-gradient-to-br from-[#B8925A]/5 to-transparent border border-[#B8925A]/15 rounded-xl">
         <p className="text-[#1A0F05]/60 text-xs leading-relaxed">
           <span className="text-[#B8925A] mr-1">💡</span>
-          <strong className="text-[#8B4513]">{locale === 'zh' ? '温馨提示：' : 'Hint:'}</strong>
+          <strong className="text-[#8B4513]">Hint:</strong>
           {hint}
         </p>
       </div>
@@ -406,7 +379,7 @@ function LoadingAnimation({ locale, title, body, hint }: { locale: Locale; title
   );
 }
 
-function WaitingAnimation({ locale, retryAfter, title, body, retryLabel }: { locale: Locale; retryAfter: number; title: string; body: string; retryLabel: string }) {
+function WaitingAnimation({ retryAfter, title, body, retryLabel }: { retryAfter: number; title: string; body: string; retryLabel: string }) {
   const minutes = Math.floor(retryAfter / 60);
   const seconds = retryAfter % 60;
 
@@ -431,10 +404,8 @@ function WaitingAnimation({ locale, retryAfter, title, body, retryLabel }: { loc
       <div className="max-w-sm mx-auto p-5 bg-gradient-to-br from-[#B8925A]/5 to-transparent border border-[#B8925A]/15 rounded-xl">
         <p className="text-[#1A0F05]/60 text-xs leading-relaxed">
           <span className="text-[#B8925A] mr-1">💡</span>
-          <strong className="text-[#8B4513]">{locale === 'zh' ? '温馨提示：' : 'Hint:'}</strong>
-          {locale === 'zh'
-            ? '使用相同邮箱和出生信息再次进入，可在 7 天内继续查看。'
-            : 'Use the same email and birth details to revisit within 7 days.'}
+          <strong className="text-[#8B4513]">Hint:</strong>
+          Use the same email and birth details to revisit within 7 days.
         </p>
       </div>
     </div>
@@ -444,51 +415,46 @@ function WaitingAnimation({ locale, retryAfter, title, body, retryLabel }: { loc
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ReportContent({ locale, report }: ReportContentProps) {
-  const dictionary = getDictionary(locale).result;
-  const chartDictionary = getDictionary(locale).chart;
+  const appDictionary = getDictionary(locale);
+  const dictionary = appDictionary.result;
+  const brand = appDictionary.brand;
   const [aiReport, setAiReport] = useState(report.aiReport);
 
-  // 动态计算 coreIdentity（如果存储的是旧错误数据）
+  // Recompute core identity if stored data is stale.
   const computeCoreIdentity = () => {
-    const storedCoreIdentity = sanitizeCoreIdentity(report.coreIdentity, locale);
+    const storedCoreIdentity = sanitizeCoreIdentity(report.coreIdentity);
 
     if (storedCoreIdentity) {
       return storedCoreIdentity;
     }
 
-    // 从 rawAstrolabe 重新计算
+    // Recompute from raw astrolabe data.
     const astrolabe = report.rawAstrolabe;
     if (!astrolabe) {
-      return locale === 'zh' ? '命盘摘要生成中。' : 'Chart summary is being prepared.';
+      return 'Chart summary is being prepared.';
     }
 
-    const mingGong = astrolabe.palaces?.find(p => p.name === '命宫');
-    const majorStars = mingGong?.majorStars?.map(s => s.name).join('·') || '空宫';
+    const lifePalace = getLifePalace(astrolabe.palaces || []);
+    const majorStars = lifePalace?.majorStars?.map((star) => star.name).join('·') || 'No major stars';
 
-    // 解析四柱
-    const chineseDate = astrolabe.chineseDate || '';
-    const siZhuParts = chineseDate.split(' ');
-    const siZhu = siZhuParts.length === 4
-      ? `${siZhuParts[0]}年${siZhuParts[1]}月${siZhuParts[2]}日${siZhuParts[3]}时`
-      : '';
+    const siZhu = extractSiZhu(astrolabe.rawDates, astrolabe.chineseDate);
+    const pillarText = [siZhu.year, siZhu.month, siZhu.day, siZhu.hour].filter(Boolean).join(' ');
+    const pillarLabel = pillarText ? pillarText : 'Unavailable';
 
-    if (locale === 'zh') {
-      return `命宫${majorStars}坐守，${astrolabe.fiveElementsClass || ''}，四柱${siZhu}生。`;
-    }
-
-    return `Life palace stars: ${majorStars}. Five-element pattern: ${astrolabe.fiveElementsClass || ''}. Four pillars: ${siZhu}.`;
+    return `Life palace stars: ${majorStars}. Five-element pattern: ${astrolabe.fiveElementsClass || ''}. Four pillars: ${pillarLabel}.`;
   };
 
   const [coreIdentity, setCoreIdentity] = useState(computeCoreIdentity());
-  const canGenerate = !report.paymentEnabled || report.isPaid || Boolean(report.aiReport && report.aiReport.length >= 100);
-  const [loading, setLoading] = useState(canGenerate && (!report.aiReport || report.aiReport.length < 100));
+  const hasValidReport = Boolean(report.aiReport && report.aiReport.length >= 100 && !containsChinese(report.aiReport));
+  const canGenerate = !report.paymentEnabled || report.isPaid || hasValidReport;
+  const [loading, setLoading] = useState(canGenerate && !hasValidReport);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [retryAfter, setRetryAfter] = useState(0);
   const generationKey = `${report.locale}:${report.id}`;
 
   useEffect(() => {
-    if (!canGenerate || (report.aiReport && report.aiReport.length >= 100)) {
+    if (!canGenerate || hasValidReport) {
       pendingInitialGenerations.delete(generationKey);
       return;
     }
@@ -502,7 +468,7 @@ export default function ReportContent({ locale, report }: ReportContentProps) {
     generateAIReport().finally(() => {
       pendingInitialGenerations.delete(generationKey);
     });
-  }, [canGenerate, generationKey, report.aiReport, report.id]);
+  }, [canGenerate, generationKey, hasValidReport, report.id]);
 
   useEffect(() => {
     if (retryAfter > 0) {
@@ -576,13 +542,13 @@ export default function ReportContent({ locale, report }: ReportContentProps) {
               ☯
             </motion.span>
             <span className="text-[#1A0F05] tracking-[0.2em] text-sm font-serif">
-              {locale === 'zh' ? '天命玄机' : 'Tianming Secrets'}
+              {brand.name}
             </span>
           </Link>
           <div className="flex items-center gap-3">
             <LanguageSwitcher locale={locale} locked />
             <span className="text-[#1A0F05]/35 text-[10px] tracking-wide">
-              {new Date(report.createdAt).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US')}
+              {new Date(report.createdAt).toLocaleString('en-US')}
             </span>
           </div>
         </div>
@@ -643,7 +609,6 @@ export default function ReportContent({ locale, report }: ReportContentProps) {
               >
                 {generating ? (
                   <WaitingAnimation
-                    locale={locale}
                     retryAfter={retryAfter}
                     title={dictionary.waitingTitle}
                     body={dictionary.waitingBody}
@@ -651,7 +616,6 @@ export default function ReportContent({ locale, report }: ReportContentProps) {
                   />
                 ) : (
                   <LoadingAnimation
-                    locale={locale}
                     title={dictionary.loadingTitle}
                     body={dictionary.loadingBody}
                     hint={dictionary.loadingHint}
@@ -757,8 +721,8 @@ export default function ReportContent({ locale, report }: ReportContentProps) {
                 >
                   <div className="inline-block px-8 py-4 bg-gradient-to-br from-[#B8925A]/5 to-transparent rounded-xl border border-[#B8925A]/10">
                     <p className="text-[#8B4513] text-sm tracking-wide leading-relaxed">
-                      {locale === 'zh' ? '"命由己造，相由心生。' : '"Read the pattern, then choose the response.'}<br />
-                      <span className="text-[#8B4513]/70">{dictionary.quote}"</span>
+                      "Read the pattern, then choose the response."<br />
+                      <span className="text-[#8B4513]/70">{dictionary.quote}</span>
                     </p>
                   </div>
                 </motion.div>
@@ -800,7 +764,7 @@ export default function ReportContent({ locale, report }: ReportContentProps) {
         <div className="max-w-5xl mx-auto text-center">
           <div className="flex items-center justify-center gap-3 mb-2">
             <span className="text-[#B8925A]/50 text-xs">✧</span>
-            <span className="text-[#1A0F05]/30 text-xs tracking-[0.2em]">{locale === 'zh' ? '天命玄机' : 'Tianming Secrets'}</span>
+            <span className="text-[#1A0F05]/30 text-xs tracking-[0.2em]">{brand.name}</span>
             <span className="text-[#B8925A]/50 text-xs">✧</span>
           </div>
           <p className="text-[#1A0F05]/20 text-[10px] tracking-wider">

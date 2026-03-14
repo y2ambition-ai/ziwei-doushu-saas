@@ -10,7 +10,7 @@ interface LocaleHtmlUpdaterProps {
 
 export function LocaleHtmlUpdater({ locale }: LocaleHtmlUpdaterProps) {
   useEffect(() => {
-    document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
+    document.documentElement.lang = 'en';
   }, [locale]);
 
   return null;

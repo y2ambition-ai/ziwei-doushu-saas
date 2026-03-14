@@ -4,6 +4,8 @@ import {
   extractCoreIdentity,
   generateMockReport,
   generateReport,
+  hasLLMConfig,
+  resolveLLMConfig,
   validateReportOutput,
 } from '../src/lib/llm';
 import type { GenerateReportInput } from '../src/lib/llm';
@@ -14,19 +16,19 @@ const baseInput: GenerateReportInput = {
   birthDate: '1994-11-03',
   birthTime: 4,
   birthCity: 'Toronto',
-  mingGong: '天相',
-  wuXingJu: '土五局',
-  chineseZodiac: '狗',
+  mingGong: 'Advisor',
+  wuXingJu: 'Water 2nd',
+  chineseZodiac: 'Dog',
   zodiac: 'Scorpio',
   siZhu: {
-    year: '甲戌',
-    month: '乙亥',
-    day: '丙子',
-    hour: '丁丑',
+    year: 'Jia Xu',
+    month: 'Yi Hai',
+    day: 'Bing Zi',
+    hour: 'Ding Chou',
   },
   palaces: [
-    { name: '命宫', majorStars: ['天相'], minorStars: ['文昌'] },
-    { name: '官禄宫', majorStars: ['太阴'], minorStars: ['左辅'] },
+    { name: 'Life Palace', majorStars: ['Advisor'], minorStars: ['Scholar'] },
+    { name: 'Career Palace', majorStars: ['Moon'], minorStars: ['Assistant'] },
   ],
 };
 
@@ -57,85 +59,62 @@ function buildEnglishReport() {
 - Lucky directions: south, southeast.`;
 }
 
-function buildChineseReport() {
-  return `核心身份：命宫天相坐守，土五局成势，适合以稳定判断和长期规划推动人生主轴。
-
-## 命格总论
-- 命宫天相 → 判断稳，擅长在复杂局面里拿捏分寸。
-
-## 人生主要方向
-- 事业：适合承担统筹与决策角色。
-- 财运：重视累积，不宜冲动冒进。
-- 感情：需要清晰边界与稳定节奏。
-
-## 当前大限
-- 当前十年适合重整资源与身份定位。
-
-## 流年运势
-- 2026年4月18日到4月30日适合争取资源。
-- 2026年8月12日到8月28日适合推进合作。
-
-## 六亲与健康
-- 家庭沟通宜直接，健康需留意睡眠与恢复。
-
-## 幸运元素
-- 幸运色：深绿、金色。
-- 幸运数字：1、6。
-- 幸运方位：正南、东南。`;
-}
-
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
-describe('LLM 报告结构稳定性', () => {
-  it('应该提取英文核心身份并通过格式校验', () => {
+describe('LLM report contract', () => {
+  it('extracts core identity and validates English output', () => {
     const report = buildEnglishReport();
 
-    expect(extractCoreIdentity(report, 'en')).toBe(
+    expect(extractCoreIdentity(report)).toBe(
       'Calm, strategic, and best when long-range structure guides near-term action.'
     );
-    expect(validateReportOutput(report, 'en')).toEqual([]);
+    expect(validateReportOutput(report)).toEqual([]);
   });
 
-  it('应该提取中文核心身份并通过格式校验', () => {
-    const report = buildChineseReport();
-
-    expect(extractCoreIdentity(report, 'zh')).toBe(
-      '命宫天相坐守，土五局成势，适合以稳定判断和长期规划推动人生主轴。'
-    );
-    expect(validateReportOutput(report, 'zh')).toEqual([]);
-  });
-
-  it('应该在首轮输出不稳定时重试一次并返回英文结果', async () => {
+  it('retries once when the first output is invalid', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            choices: [
+        {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            output: [
               {
-                message: {
-                  content: '1) Core chart identity\n\nThis opening is invalid because it has no summary label.',
-                },
+                type: 'message',
+                content: [
+                  {
+                    type: 'output_text',
+                    text: '1) Core chart identity\n\nThis opening is invalid because it has no summary label.',
+                  },
+                ],
               },
             ],
           }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        )
+          text: async () => '',
+        }
       )
       .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            choices: [
+        {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            output: [
               {
-                message: {
-                  content: buildEnglishReport(),
-                },
+                type: 'message',
+                content: [
+                  {
+                    type: 'output_text',
+                    text: buildEnglishReport(),
+                  },
+                ],
               },
             ],
           }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        )
+          text: async () => '',
+        }
       );
 
     vi.stubGlobal('fetch', fetchMock);
@@ -145,7 +124,7 @@ describe('LLM 报告结构稳定性', () => {
 
     const result = await generateReport({ ...baseInput, locale: 'en' }, {
       apiKey: 'test-key',
-      baseURL: 'http://example.com/v1',
+      baseURL: 'http://example.com',
       model: 'gpt-5',
     });
 
@@ -158,31 +137,19 @@ describe('LLM 报告结构稳定性', () => {
     const firstRequest = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     const secondRequest = JSON.parse(fetchMock.mock.calls[1][1].body as string);
 
+    expect(fetchMock.mock.calls[0][0]).toBe('http://example.com/v1/responses');
     expect(firstRequest.model).toBe('gpt-5');
-    expect(secondRequest.messages[1].content).toContain('Rewrite the entire report from scratch');
+    expect(firstRequest.instructions).toContain('You are an expert Zi Wei Dou Shu analyst.');
+    expect(secondRequest.input).toContain('Rewrite the entire report from scratch');
   });
 
-  it('mock 报告也应该遵守中英文结构合同', () => {
+  it('mock report follows the English contract', () => {
     const englishMock = generateMockReport({ ...baseInput, locale: 'en' });
-    const chineseMock = generateMockReport({ ...baseInput, locale: 'zh' });
 
-    expect(validateReportOutput(englishMock.report, 'en')).toEqual([]);
-    expect(validateReportOutput(chineseMock.report, 'zh')).toEqual([]);
+    expect(validateReportOutput(englishMock.report)).toEqual([]);
   });
 
-  it('儿童阶段 mock 报告不应该强行写成人地域化议题', () => {
-    const childMock = generateMockReport({
-      ...baseInput,
-      locale: 'zh',
-      birthDate: '2022-05-01',
-    });
-
-    expect(childMock.report).toContain('成长重点');
-    expect(childMock.report).not.toContain('高考');
-    expect(childMock.report).not.toContain('事业：');
-  });
-
-  it('地域化制度词应该被格式校验拦截', () => {
+  it('region-specific terms are rejected', () => {
     const report = `Core Identity: Stable and thoughtful.
 
 ## Core Chart Identity
@@ -205,6 +172,32 @@ describe('LLM 报告结构稳定性', () => {
 - Lucky numbers: 1.
 - Lucky directions: south.`;
 
-    expect(validateReportOutput(report, 'en')).toContain('contains region-specific references');
+    expect(validateReportOutput(report)).toContain('contains region-specific references');
+  });
+
+  it('prefers OPENAI runtime config and falls back to legacy variables', () => {
+    vi.stubEnv('OPENAI_API_KEY', '');
+    vi.stubEnv('OPENAI_BASE_URL', '');
+    vi.stubEnv('OPENAI_MODEL', '');
+    vi.stubEnv('DOUBAO_API_KEY', 'legacy-key');
+    vi.stubEnv('DOUBAO_BASE_URL', 'https://legacy.example');
+    vi.stubEnv('DOUBAO_MODEL', 'legacy-model');
+
+    expect(resolveLLMConfig()).toEqual({
+      apiKey: 'legacy-key',
+      baseURL: 'https://legacy.example/v1',
+      model: 'legacy-model',
+    });
+    expect(hasLLMConfig()).toBe(true);
+
+    vi.stubEnv('OPENAI_API_KEY', 'openai-key');
+    vi.stubEnv('OPENAI_BASE_URL', 'https://ai.gs88.shop');
+    vi.stubEnv('OPENAI_MODEL', 'gpt-5.2');
+
+    expect(resolveLLMConfig()).toEqual({
+      apiKey: 'openai-key',
+      baseURL: 'https://ai.gs88.shop/v1',
+      model: 'gpt-5.2',
+    });
   });
 });

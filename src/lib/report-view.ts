@@ -41,9 +41,47 @@ interface ReportRecordLike {
   paidAt: Date | null;
 }
 
+function pad2(value: string): string {
+  return value.padStart(2, '0');
+}
+
+function normalizeSolarDate(value?: string): string {
+  if (!value) {
+    return '';
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const isoMatch = trimmed.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${pad2(isoMatch[2])}-${pad2(isoMatch[3])}`;
+  }
+
+  const digitMatch = trimmed.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if (digitMatch) {
+    return `${digitMatch[1]}-${pad2(digitMatch[2])}-${pad2(digitMatch[3])}`;
+  }
+
+  return '';
+}
+
 function parseRawAstrolabe(rawAstrolabe: string | null): RawAstrolabe | null {
   try {
-    return rawAstrolabe ? JSON.parse(rawAstrolabe) : null;
+    if (!rawAstrolabe) {
+      return null;
+    }
+
+    const parsed = JSON.parse(rawAstrolabe) as RawAstrolabe | null;
+    if (!parsed || typeof parsed !== 'object') {
+      return null;
+    }
+
+    parsed.solarDate = normalizeSolarDate(parsed.solarDate);
+
+    return parsed;
   } catch (error) {
     console.error('Failed to parse astrolabe data:', error);
     return null;

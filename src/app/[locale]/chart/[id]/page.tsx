@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: LocalizedChartPageProps): Pro
   const dictionary = getDictionary(locale);
 
   return {
-    title: locale === 'zh' ? '天命玄机 | 紫微斗数命盘' : 'Tianming Secrets | Zi Wei Dou Shu Chart',
+    title: 'Tianming Secrets | Zi Wei Dou Shu Chart',
     description: dictionary.meta.description,
   };
 }

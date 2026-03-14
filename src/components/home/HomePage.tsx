@@ -19,18 +19,18 @@ const BaguaBackground = dynamic(
 );
 
 const shichenBlocks = [
-  { value: 'zi', hour: 0, en: 'Zi hour · 23:00–01:00', zh: '子时 · 23:00–01:00' },
-  { value: 'chou', hour: 2, en: 'Chou hour · 01:00–03:00', zh: '丑时 · 01:00–03:00' },
-  { value: 'yin', hour: 4, en: 'Yin hour · 03:00–05:00', zh: '寅时 · 03:00–05:00' },
-  { value: 'mao', hour: 6, en: 'Mao hour · 05:00–07:00', zh: '卯时 · 05:00–07:00' },
-  { value: 'chen', hour: 8, en: 'Chen hour · 07:00–09:00', zh: '辰时 · 07:00–09:00' },
-  { value: 'si', hour: 10, en: 'Si hour · 09:00–11:00', zh: '巳时 · 09:00–11:00' },
-  { value: 'wu', hour: 12, en: 'Wu hour · 11:00–13:00', zh: '午时 · 11:00–13:00' },
-  { value: 'wei', hour: 14, en: 'Wei hour · 13:00–15:00', zh: '未时 · 13:00–15:00' },
-  { value: 'shen', hour: 16, en: 'Shen hour · 15:00–17:00', zh: '申时 · 15:00–17:00' },
-  { value: 'you', hour: 18, en: 'You hour · 17:00–19:00', zh: '酉时 · 17:00–19:00' },
-  { value: 'xu', hour: 20, en: 'Xu hour · 19:00–21:00', zh: '戌时 · 19:00–21:00' },
-  { value: 'hai', hour: 22, en: 'Hai hour · 21:00–23:00', zh: '亥时 · 21:00–23:00' },
+  { value: 'zi', hour: 0, en: '11 PM-1 AM' },
+  { value: 'chou', hour: 2, en: '1 AM-3 AM' },
+  { value: 'yin', hour: 4, en: '3 AM-5 AM' },
+  { value: 'mao', hour: 6, en: '5 AM-7 AM' },
+  { value: 'chen', hour: 8, en: '7 AM-9 AM' },
+  { value: 'si', hour: 10, en: '9 AM-11 AM' },
+  { value: 'wu', hour: 12, en: '11 AM-1 PM' },
+  { value: 'wei', hour: 14, en: '1 PM-3 PM' },
+  { value: 'shen', hour: 16, en: '3 PM-5 PM' },
+  { value: 'you', hour: 18, en: '5 PM-7 PM' },
+  { value: 'xu', hour: 20, en: '7 PM-9 PM' },
+  { value: 'hai', hour: 22, en: '9 PM-11 PM' },
 ] as const;
 
 interface HomePageProps {
@@ -41,10 +41,33 @@ interface HomePageProps {
 interface FormState {
   email: string;
   gender: string;
-  birthDate: string;
+  birthYear: string;
+  birthMonth: string;
+  birthDay: string;
   shichen: string;
   currentHour: string;
   currentMinute: string;
+}
+
+function isValidBirthDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function buildBirthDate(form: FormState): string {
+  const year = form.birthYear.trim();
+  const month = form.birthMonth.trim();
+  const day = form.birthDay.trim();
+
+  if (!year || !month || !day) {
+    return '';
+  }
+
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
 function SectionDivider() {
@@ -57,10 +80,7 @@ function SectionDivider() {
   );
 }
 
-function HeroSigilStage({
-}: {
-  locale: Locale;
-}) {
+function HeroSigilStage() {
   return (
     <div className="w-full">
       <div className="paper-panel relative aspect-square w-full overflow-hidden rounded-[28px] p-6 md:p-7">
@@ -107,7 +127,9 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
   const [form, setForm] = useState<FormState>({
     email: '',
     gender: '',
-    birthDate: '',
+    birthYear: '',
+    birthMonth: '',
+    birthDay: '',
     shichen: '',
     currentHour: '',
     currentMinute: '0',
@@ -118,22 +140,24 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const home = dictionary.home;
-  const heroTitleLines =
-    locale === 'zh'
-      ? ['这张命盘，是看清人生转机的方向。']
-      : ['This chart is your Eastern guide', 'to life turning points.'];
-  const heroHighlights =
-    locale === 'zh'
-      ? ['30+ 道家传承脉络', '完整十二宫命盘', '7 天内可重复查看']
-      : ['30+ lineage source notes', 'full twelve-palace chart', 'return within 7 days'];
+  const heroTitleLines = [home.heroTitle, home.heroTitleAccent];
+  const currentYear = new Date().getFullYear();
   const hours = Array.from({ length: 24 }, (_, index) => index);
   const minutes = Array.from({ length: 60 }, (_, index) => index);
+  const yearOptions = Array.from({ length: currentYear - 1899 }, (_, index) => currentYear - index);
+  const monthOptions = Array.from({ length: 12 }, (_, index) => index + 1);
+  const selectedYear = Number(form.birthYear);
+  const selectedMonth = Number(form.birthMonth);
+  const maxBirthDay = selectedYear && selectedMonth
+    ? new Date(selectedYear, selectedMonth, 0).getDate()
+    : 31;
+  const dayOptions = Array.from({ length: maxBirthDay }, (_, index) => index + 1);
 
   const shichenOptions = useMemo(
     () =>
       shichenBlocks.map((item) => ({
         ...item,
-        label: locale === 'zh' ? item.zh : item.en,
+        label: item.en,
       })),
     [locale]
   );
@@ -144,6 +168,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
 
   const validate = () => {
     const nextErrors: Record<string, string> = {};
+    const birthDate = buildBirthDate(form);
 
     if (!form.email) {
       nextErrors.email = home.errors.emailRequired;
@@ -155,8 +180,20 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
       nextErrors.gender = home.errors.genderRequired;
     }
 
-    if (!form.birthDate) {
-      nextErrors.birthDate = home.errors.birthDateIncomplete;
+    if (!form.birthYear) {
+      nextErrors.birthYear = home.errors.yearRequired;
+    }
+
+    if (!form.birthMonth) {
+      nextErrors.birthMonth = home.errors.monthRequired;
+    }
+
+    if (!form.birthDay) {
+      nextErrors.birthDay = home.errors.dayRequired;
+    }
+
+    if (!nextErrors.birthYear && !nextErrors.birthMonth && !nextErrors.birthDay && !isValidBirthDate(birthDate)) {
+      nextErrors.birthDate = home.errors.birthDateInvalid;
     }
 
     if (!form.shichen) {
@@ -179,6 +216,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
     }
 
     const shichen = shichenOptions.find((item) => item.value === form.shichen);
+    const birthDate = buildBirthDate(form);
 
     setLoading(true);
     setLoadingStep('chart');
@@ -195,7 +233,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
         body: JSON.stringify({
           email: form.email,
           gender: form.gender,
-          birthDate: form.birthDate,
+          birthDate,
           birthTime: shichen?.hour ?? 12,
           birthMinute: 0,
           currentHour: parseInt(form.currentHour, 10),
@@ -210,8 +248,9 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
         throw new Error(data.error || home.errors.submitFailed);
       }
 
+      const reportId = data.reportId as string;
       setLoadingStep('success');
-      router.push(getLocalizedPath(locale, `/chart/${data.reportId}`));
+      router.push(getLocalizedPath(locale, `/chart/${reportId}`));
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : home.errors.submitFailed);
     } finally {
@@ -247,11 +286,10 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`font-display text-[#1a0f05] leading-snug ${
-                  locale === 'zh' ? 'text-2xl md:text-3xl' : 'text-2xl md:text-3xl'
-                }`}
+                className="font-display text-[#1a0f05] leading-snug text-2xl md:text-3xl"
               >
                 <span className="block text-[#1a0f05]">{heroTitleLines[0]}</span>
+                <span className="block text-[#1a0f05]">{heroTitleLines[1]}</span>
               </motion.h1>
 
               <motion.p
@@ -272,31 +310,27 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-3 text-2xl font-bold tracking-[0.1em] text-[#1a0f05]">
                     <span className="text-[#b8925a]">✦</span>
-                    {locale === 'zh' ? '30+ 道家传承脉络' : '30+ lineage source notes'}
+                    30+ lineage source notes
                   </div>
                   <p className="text-xl text-[#6d5437] pl-8 max-w-3xl leading-relaxed">
-                    {locale === 'zh' 
-                      ? '汇集三十余位道家传承老师的判断经验与古籍脉络，摒弃泛泛而谈的性格套话。' 
-                      : 'Distilled from over 30 Taoist lineage teachers and classical source notes.'}
+                    Distilled from over 30 Taoist lineage teachers and classical source notes.
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-3 text-2xl font-bold tracking-[0.1em] text-[#1a0f05]">
                     <span className="text-[#b8925a]">✦</span>
-                    {locale === 'zh' ? '完整十二宫命盘' : 'Full twelve-palace chart'}
+                    Full twelve-palace chart
                   </div>
                   <p className="text-xl text-[#6d5437] pl-8 max-w-3xl leading-relaxed">
-                    {locale === 'zh'
-                      ? '系统呈现完整的紫微斗数排盘，让你先看清格局与主星落点，再深入探索关键转折。'
-                      : 'We render the complete structural layout of your chart before any deep-dive readings.'}
+                    We render the complete structural layout of your chart before any deep-dive readings.
                   </p>
                 </div>
               </motion.div>
             </div>
 
             <div className="hidden md:flex justify-center items-center">
-              <HeroSigilStage locale={locale} />
+              <HeroSigilStage />
             </div>
           </div>
         </section>
@@ -324,7 +358,7 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
             </div>
 
             {/* Right Form Panel */}
-            <form onSubmit={handleSubmit} className="w-full rounded-[32px] bg-white/60 backdrop-blur-xl p-8 md:p-12 shadow-[0_20px_60px_rgba(184,146,90,0.08)] border border-[#b8925a]/10">
+            <form noValidate onSubmit={handleSubmit} className="w-full rounded-[32px] bg-white/60 backdrop-blur-xl p-8 md:p-12 shadow-[0_20px_60px_rgba(184,146,90,0.08)] border border-[#b8925a]/10">
               <div className="grid gap-6">
                 <div className="grid gap-6 md:grid-cols-2">
                   <div className="space-y-2">
@@ -357,12 +391,63 @@ export default function HomePage({ locale, dictionary }: HomePageProps) {
                 <div className="grid gap-6 md:grid-cols-2">
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase tracking-[0.2em] text-[#8c6c45] font-bold">{home.fields.birthDate}</label>
-                    <input
-                      type="date"
-                      value={form.birthDate}
-                      onChange={(event) => setForm((current) => ({ ...current, birthDate: event.target.value }))}
-                      className="w-full rounded-xl border border-[#b8925a]/20 bg-white/80 px-4 py-3 text-[#1a0f05] outline-none transition focus:border-[#b8925a] focus:ring-1 focus:ring-[#b8925a]"
-                    />
+                    <div className="grid grid-cols-3 gap-3">
+                      <select
+                        value={form.birthYear}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            birthYear: event.target.value,
+                            birthDay: current.birthDay && Number(current.birthDay) > new Date(Number(event.target.value || 0), Number(current.birthMonth || 0), 0).getDate()
+                              ? ''
+                              : current.birthDay,
+                          }))
+                        }
+                        className="w-full rounded-xl border border-[#b8925a]/20 bg-white/80 px-4 py-3 text-[#1a0f05] outline-none transition focus:border-[#b8925a] focus:ring-1 focus:ring-[#b8925a]"
+                      >
+                        <option value="">{home.fields.birthYearPlaceholder}</option>
+                        {yearOptions.map((value) => (
+                          <option key={value} value={String(value)}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={form.birthMonth}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            birthMonth: event.target.value,
+                            birthDay: current.birthDay && Number(current.birthDay) > new Date(Number(current.birthYear || 0), Number(event.target.value || 0), 0).getDate()
+                              ? ''
+                              : current.birthDay,
+                          }))
+                        }
+                        className="w-full rounded-xl border border-[#b8925a]/20 bg-white/80 px-4 py-3 text-[#1a0f05] outline-none transition focus:border-[#b8925a] focus:ring-1 focus:ring-[#b8925a]"
+                      >
+                        <option value="">{home.fields.birthMonthPlaceholder}</option>
+                        {monthOptions.map((value) => (
+                          <option key={value} value={String(value)}>
+                            {String(value).padStart(2, '0')}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={form.birthDay}
+                        onChange={(event) => setForm((current) => ({ ...current, birthDay: event.target.value }))}
+                        className="w-full rounded-xl border border-[#b8925a]/20 bg-white/80 px-4 py-3 text-[#1a0f05] outline-none transition focus:border-[#b8925a] focus:ring-1 focus:ring-[#b8925a]"
+                      >
+                        <option value="">{home.fields.birthDayPlaceholder}</option>
+                        {dayOptions.map((value) => (
+                          <option key={value} value={String(value)}>
+                            {String(value).padStart(2, '0')}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {validationErrors.birthYear ? <p className="text-[11px] text-red-600">{validationErrors.birthYear}</p> : null}
+                    {validationErrors.birthMonth ? <p className="text-[11px] text-red-600">{validationErrors.birthMonth}</p> : null}
+                    {validationErrors.birthDay ? <p className="text-[11px] text-red-600">{validationErrors.birthDay}</p> : null}
                     {validationErrors.birthDate ? <p className="text-[11px] text-red-600">{validationErrors.birthDate}</p> : null}
                   </div>
 

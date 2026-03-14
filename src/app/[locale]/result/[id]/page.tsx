@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: LocalizedResultPageProps): Pr
   const dictionary = getDictionary(locale);
 
   return {
-    title: locale === 'zh' ? '天命玄机 | 紫微斗数解读结果' : 'Tianming Secrets | Zi Wei Dou Shu Reading',
+    title: 'Tianming Secrets | Zi Wei Dou Shu Reading',
     description: dictionary.meta.description,
   };
 }

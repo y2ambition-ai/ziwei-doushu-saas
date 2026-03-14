@@ -1,6 +1,6 @@
 /**
- * 命盘组件共享模块
- * 包含 SVG 装饰、辅助函数、类型定义等
+ * Shared chart module.
+ * Includes SVG decorations, helpers, and types.
  */
 
 import React from 'react';
@@ -8,11 +8,14 @@ import { motion } from 'motion/react';
 
 import { Locale } from '@/lib/i18n/config';
 import {
+  RawDates,
+  formatLunarDate,
   getLocalizedShichenName,
   getWesternZodiac as getLocalizedWesternZodiac,
   localizeEarthlyBranch,
   localizeGender,
   localizePalaceName,
+  normalizeEarthlyBranch,
 } from '@/lib/i18n/chart';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,6 +33,8 @@ export interface PalaceData {
   suiqian12?: string;
   decadal?: { range?: [number, number] };
   ages?: number[];
+  isBodyPalace?: boolean;
+  isOriginalPalace?: boolean;
 }
 
 export interface RawAstrolabe {
@@ -37,7 +42,9 @@ export interface RawAstrolabe {
   gender?: string;
   solarDate?: string;
   lunarDate?: string;
+  rawDates?: RawDates;
   zodiac?: string;
+  sign?: string;
   fiveElementsClass?: string;
   chineseZodiac?: string;
   chineseDate?: string;
@@ -47,13 +54,13 @@ export interface RawAstrolabe {
   hour?: { categorical?: string };
 }
 
-// ─── 12宫布局（传统紫微斗数排列）────────────────────────────────────────────────
+// ─── 12-Palace Layout (Traditional Zi Wei Dou Shu arrangement) ───────────────
 
 export const PALACE_LAYOUT = [
-  ['巳', '午', '未', '申'],
-  ['辰', 'CENTER', 'EMPTY', '酉'],
-  ['卯', 'EMPTY', 'EMPTY', '戌'],
-  ['寅', '丑', '子', '亥'],
+  ['si', 'wu', 'wei', 'shen'],
+  ['chen', 'CENTER', 'EMPTY', 'you'],
+  ['mao', 'EMPTY', 'EMPTY', 'xu'],
+  ['yin', 'chou', 'zi', 'hai'],
 ];
 
 // ─── SVG Decorations ───────────────────────────────────────────────────────────
@@ -70,17 +77,17 @@ export function TaiChiSymbol({ className = '' }: { className?: string }) {
 }
 
 export function BaguaRing({ className = '' }: { className?: string }) {
-  // 八卦三爻数据: [上爻, 中爻, 下爻] - true=阳(实线), false=阴(断线)
-  // 后天八卦顺序（从北开始顺时针）: 坎、艮、震、巽、离、坤、兑、乾
+  // Trigram line data: [top, middle, bottom] - true=yang (solid), false=yin (broken).
+  // Later Heaven sequence, clockwise from North.
   const bagua = [
-    [false, true, false], // 坎 ☵ (北, 0°)
-    [true, false, false], // 艮 ☶ (东北, 45°)
-    [false, false, true], // 震 ☳ (东, 90°)
-    [true, true, false],  // 巽 ☴ (东南, 135°)
-    [true, false, true],  // 离 ☲ (南, 180°)
-    [false, false, false],// 坤 ☷ (西南, 225°)
-    [false, true, true],  // 兑 ☱ (西, 270°)
-    [true, true, true],   // 乾 ☰ (西北, 315°)
+    [false, true, false], // Kan ☵ (North, 0°)
+    [true, false, false], // Gen ☶ (Northeast, 45°)
+    [false, false, true], // Zhen ☳ (East, 90°)
+    [true, true, false],  // Xun ☴ (Southeast, 135°)
+    [true, false, true],  // Li ☲ (South, 180°)
+    [false, false, false],// Kun ☷ (Southwest, 225°)
+    [false, true, true],  // Dui ☱ (West, 270°)
+    [true, true, true],   // Qian ☰ (Northwest, 315°)
   ];
 
   const renderTrigram = (lines: boolean[], index: number) => {
@@ -151,7 +158,49 @@ export function getWesternZodiac(birthDate: string, locale: Locale = 'en'): stri
 }
 
 export function getPalaceByBranch(palaces: PalaceData[], branch: string): PalaceData | null {
-  return palaces?.find(p => p.earthlyBranch === branch) || null;
+  const target = normalizeEarthlyBranch(branch);
+  return palaces?.find((p) => normalizeEarthlyBranch(p.earthlyBranch) === target) || null;
+}
+
+function normalizePalaceName(value?: string): string {
+  if (!value) {
+    return '';
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  if (/[\u4e00-\u9fff]/.test(trimmed)) {
+    return trimmed.replace(/\u5bab$/, '');
+  }
+
+  return trimmed.toLowerCase().replace(/palace/g, '').trim();
+}
+
+export function getLifePalace(palaces: PalaceData[]): PalaceData | null {
+  const direct = palaces?.find((palace) => palace.isOriginalPalace);
+  if (direct) {
+    return direct;
+  }
+
+  return palaces?.find((palace) => {
+    const normalized = normalizePalaceName(palace.name);
+    return normalized === 'soul' || normalized === 'life' || normalized === '\u547d';
+  }) || null;
+}
+
+export function getBodyPalace(palaces: PalaceData[]): PalaceData | null {
+  const direct = palaces?.find((palace) => palace.isBodyPalace);
+  if (direct) {
+    return direct;
+  }
+
+  return palaces?.find((palace) => {
+    const normalized = normalizePalaceName(palace.name);
+    return normalized === 'body' || normalized === '\u8eab';
+  }) || null;
 }
 
 // ─── Star Badge Component ───────────────────────────────────────────────────────
@@ -170,7 +219,7 @@ export function StarBadge({ name, brightness, isMain }: {
                   }`}
     >
       {name}
-      {brightness && brightness !== '庙' && (
+      {brightness && (
         <span className="ml-0.5 text-[#B8925A] text-[10px]">{brightness}</span>
       )}
     </span>
@@ -202,7 +251,7 @@ export function PalaceCell({ palace, isCenter, astrolabe, minHeight = 'md:min-h-
           <CloudPattern className="w-16 h-8 text-[#B8925A]" />
         </div>
 
-        <div className="relative z-10 text-center">
+      <div className="relative z-10 text-center">
           <motion.div
             className="mb-3"
             animate={{ rotate: 360 }}
@@ -210,13 +259,11 @@ export function PalaceCell({ palace, isCenter, astrolabe, minHeight = 'md:min-h-
           >
             <TaiChiSymbol className="w-12 h-12 md:w-16 md:h-16 mx-auto text-[#8B4513]" />
           </motion.div>
-          <p className="text-[#8B4513] text-[10px] tracking-[0.3em] mb-2 font-medium">
-            {locale === 'zh' ? '紫微斗數' : 'ZI WEI DOU SHU'}
-          </p>
+          <p className="text-[#8B4513] text-[10px] tracking-[0.3em] mb-2 font-medium">ZI WEI DOU SHU</p>
           <p className="text-base md:text-lg mb-1 font-medium">{localizeGender(locale, astrolabe?.gender)}</p>
-          <p className="text-xs text-[#1A0F05]/60">{astrolabe?.lunarDate || ''}</p>
+          <p className="text-xs text-[#1A0F05]/60">{formatLunarDate(astrolabe?.rawDates, astrolabe?.lunarDate)}</p>
           <div className="mt-3 pt-3 border-t border-[#8B4513]/20">
-            <p className="text-[#8B4513] text-[10px] tracking-wider">五行局</p>
+            <p className="text-[#8B4513] text-[10px] tracking-wider">Five-element pattern</p>
             <p className="text-lg md:text-xl font-medium mt-0.5">{astrolabe?.fiveElementsClass || '-'}</p>
           </div>
         </div>
@@ -262,7 +309,7 @@ export function PalaceCell({ palace, isCenter, astrolabe, minHeight = 'md:min-h-
             ))}
           </div>
         ) : (
-          <span className="text-[#1A0F05]/20 text-[10px] italic">{locale === 'zh' ? '空宫' : 'No major stars'}</span>
+          <span className="text-[#1A0F05]/20 text-[10px] italic">No major stars</span>
         )}
 
         {minorStars.length > 0 && (
@@ -288,31 +335,31 @@ export function PalaceCell({ palace, isCenter, astrolabe, minHeight = 'md:min-h-
       <div className="mt-auto pt-1 border-t border-[#B8925A]/10 space-y-0.5">
         {palace.changsheng12 && (
           <div className="flex items-center gap-1">
-            <span className="text-[#B8925A] text-[8px]">长生:</span>
+            <span className="text-[#B8925A] text-[8px]">Changsheng:</span>
             <span className="text-[#1A0F05]/60 text-[8px]">{palace.changsheng12}</span>
           </div>
         )}
         {palace.boshi12 && (
           <div className="flex items-center gap-1">
-            <span className="text-[#B8925A] text-[8px]">博士:</span>
+            <span className="text-[#B8925A] text-[8px]">Boshi:</span>
             <span className="text-[#1A0F05]/60 text-[8px]">{palace.boshi12}</span>
           </div>
         )}
         {palace.jiangqian12 && (
           <div className="flex items-center gap-1">
-            <span className="text-[#B8925A] text-[8px]">将前:</span>
+            <span className="text-[#B8925A] text-[8px]">Jiangqian:</span>
             <span className="text-[#1A0F05]/60 text-[8px]">{palace.jiangqian12}</span>
           </div>
         )}
         {palace.suiqian12 && (
           <div className="flex items-center gap-1">
-            <span className="text-[#B8925A] text-[8px]">岁前:</span>
+            <span className="text-[#B8925A] text-[8px]">Suiqian:</span>
             <span className="text-[#1A0F05]/60 text-[8px]">{palace.suiqian12}</span>
           </div>
         )}
         {palace.ages && palace.ages.length > 0 && (
           <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-[#8B0000] text-[8px]">小限:</span>
+            <span className="text-[#8B0000] text-[8px]">Ages:</span>
             <span className="text-[#1A0F05]/50 text-[7px]">{palace.ages.slice(0, 8).join(', ')}...</span>
           </div>
         )}

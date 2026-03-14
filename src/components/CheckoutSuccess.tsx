@@ -85,9 +85,7 @@ export default function CheckoutSuccess({ locale, dictionary, reportId }: Checko
           </div>
           {status === 'error' ? (
             <p className="mt-4 text-sm leading-7 text-[#ffd8c7]">
-              {locale === 'zh'
-                ? '状态检查失败，你可以稍后手动打开报告。'
-                : 'Status polling failed. You can open the report manually in a moment.'}
+              Status polling failed. You can open the report manually in a moment.
             </p>
           ) : null}
         </div>

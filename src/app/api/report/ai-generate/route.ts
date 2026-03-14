@@ -1,17 +1,16 @@
 /**
- * AI 报告生成 API
- * POST /api/report/ai-generate
+ * AI report generation API (POST /api/report/ai-generate).
  *
- * 防止重复调用API的逻辑：
- * 1. 如果已有完整AI报告，直接返回
- * 2. 如果API已调用但报告未生成：
- *    - 10分钟内：返回"generating"状态，不重新调用
- *    - 超过10分钟且重试<3次：允许重试
- *    - 重试>=3次：返回错误
+ * Duplicate-call prevention:
+ * 1. If a full report exists, return it.
+ * 2. If an API call is in flight:
+ *    - Within 10 minutes: return \"generating\" without re-calling.
+ *    - After 10 minutes with retries < 3: allow retry.
+ *    - Retries >= 3: return error.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateReport, generateMockReport } from '@/lib/llm';
+import { generateReport, generateMockReport, hasLLMConfig } from '@/lib/llm';
 import { prisma } from '@/lib/db';
 import { normalizeLocale } from '@/lib/i18n/config';
 import { generateAstrolabe } from '@/lib/ziwei/wrapper';
@@ -21,8 +20,8 @@ import { getTempReport, updateTempReport } from '@/lib/temp-report-store';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const RETRY_WINDOW_MS = 10 * 60 * 1000; // 10分钟重试窗口
-const MAX_RETRIES = 3; // 最大重试次数
+const RETRY_WINDOW_MS = 10 * 60 * 1000; // 10-minute retry window.
+const MAX_RETRIES = 3; // Max retry attempts.
 
 interface StoredReport {
   id: string;
@@ -113,17 +112,17 @@ export async function POST(request: NextRequest) {
 
     if (!reportId) {
       return NextResponse.json(
-        { error: '缺少报告ID' },
+        { error: 'Missing report ID.' },
         { status: 400 }
       );
     }
 
-    // 1. 获取报告数据
+    // 1. Fetch report data
     const { report, useTempStore } = await getStoredReport(reportId);
 
     if (!report) {
       return NextResponse.json(
-        { error: '报告不存在' },
+        { error: 'Report not found.' },
         { status: 404 }
       );
     }
@@ -150,7 +149,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 如果已有AI报告，直接返回（已完成状态）
+    // 2. Return cached report if already complete
     if (report.aiReport && report.aiReport.length > 100) {
       return NextResponse.json({
         success: true,
@@ -162,42 +161,42 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 3. 检查是否已调用过API（防止重复调用）
+    // 3. Avoid duplicate API calls
     if (report.apiCalledAt) {
       const timeSinceCall = Date.now() - report.apiCalledAt.getTime();
       const retryCount = report.apiRetryCount || 0;
 
-      // 10分钟内，返回"正在生成"状态，不重新调用
+      // Within retry window, return generating state
       if (timeSinceCall < RETRY_WINDOW_MS) {
         const remainingSeconds = Math.ceil((RETRY_WINDOW_MS - timeSinceCall) / 1000);
         return NextResponse.json({
           success: false,
           status: 'generating',
-          message: '报告正在生成中，请稍后再试',
+          message: 'The report is still being generated. Please try again shortly.',
           retryAfter: remainingSeconds,
         });
       }
 
-      // 超过10分钟，检查重试次数
+      // After retry window, check retry count
       if (retryCount >= MAX_RETRIES) {
         return NextResponse.json({
           success: false,
           status: 'failed',
-          error: '报告生成失败次数过多，请联系客服',
+          error: 'The report failed too many times. Please contact support.',
         }, { status: 500 });
       }
 
-      // 允许重试，增加重试计数
+      // Allow retry
       console.log(`Retrying API call (attempt ${retryCount + 1}/${MAX_RETRIES}) for report: ${reportId}`);
     }
 
-    // 4. 标记API调用开始（防止并发调用）
+    // 4. Mark API call start
     await updateStoredReport(reportId, {
       apiCalledAt: new Date(),
       apiRetryCount: (report.apiRetryCount || 0) + 1,
     }, useTempStore);
 
-    // 5. 生成命盘数据
+    // 5. Generate chart data
     const astrolabe = generateAstrolabe({
       birthDate: report.birthDate,
       birthTime: report.birthTime,
@@ -208,14 +207,14 @@ export async function POST(request: NextRequest) {
       birthCity: report.birthCity || '',
     });
 
-    // 6. 准备LLM输入
+    // 6. Prepare LLM input
     const llmInput = {
       email: report.email,
       gender: report.gender,
       birthDate: report.birthDate,
       birthTime: astrolabe.parsed.solarTime.shichen,
       birthCity: report.birthCity || '',
-      mingGong: astrolabe.parsed.mingGong.majorStars.join('·') || '空宫',
+      mingGong: astrolabe.parsed.mingGong.majorStars.join('·') || 'No major stars',
       wuXingJu: astrolabe.parsed.wuXingJu,
       chineseZodiac: astrolabe.parsed.chineseZodiac,
       zodiac: astrolabe.parsed.zodiac,
@@ -225,16 +224,16 @@ export async function POST(request: NextRequest) {
       locale,
     };
 
-    // 7. 调用API生成报告
-    const hasApiKey = process.env.DOUBAO_API_KEY && process.env.DOUBAO_API_KEY.length > 0;
+    // 7. Generate report
+    const hasApiKey = hasLLMConfig();
 
     let reportResult;
     try {
       if (hasApiKey) {
-        console.log('Calling Doubao API for AI report...');
+        console.log('Calling configured LLM API for AI report...');
         reportResult = await generateReport(llmInput);
       } else {
-        console.log('No API key, using mock report');
+        console.log('No LLM API key, using mock report');
         reportResult = generateMockReport(llmInput);
       }
     } catch (aiError) {
@@ -245,7 +244,7 @@ export async function POST(request: NextRequest) {
       throw aiError;
     }
 
-    // 8. 更新数据库
+    // 8. Persist report
     const updateData: {
       parsedData: string;
       aiReport: string;
@@ -265,7 +264,7 @@ export async function POST(request: NextRequest) {
 
     await updateStoredReport(reportId, updateData, useTempStore);
 
-    // 9. 返回结果
+    // 9. Response
     return NextResponse.json({
       success: true,
       status: 'completed',
@@ -280,9 +279,9 @@ export async function POST(request: NextRequest) {
       endpoint: '/api/report/ai-generate',
       method: 'POST',
     });
-    const errorMessage = error instanceof Error ? error.message : '未知错误';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `AI报告生成失败: ${errorMessage}`, status: 'error' },
+      { error: `AI report generation failed: ${errorMessage}`, status: 'error' },
       { status: 500 }
     );
   }

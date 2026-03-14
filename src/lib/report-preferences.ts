@@ -22,7 +22,7 @@ function parseReportPreferences(parsedData?: string | null): ParsedReportPrefere
       return parsed as ParsedReportPreferences;
     }
   } catch (error) {
-    console.warn('解析报告偏好失败，已回退为默认语言。', error);
+    console.warn('Failed to parse report preferences. Falling back to default locale.', error);
   }
 
   return {};
@@ -36,16 +36,6 @@ export function resolveStoredReportLocale(
 
   if (preferences.locale) {
     return normalizeLocale(preferences.locale);
-  }
-
-  const content = [source.aiReport, source.coreIdentity].filter(Boolean).join('\n');
-
-  if (/^核心身份[:：]/m.test(content) || content.includes('## 命格总论')) {
-    return 'zh';
-  }
-
-  if (/^Core Identity:/im.test(content) || content.includes('## Core Chart Identity')) {
-    return 'en';
   }
 
   return normalizeLocale(fallbackLocale);

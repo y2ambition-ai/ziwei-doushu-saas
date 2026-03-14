@@ -2,41 +2,32 @@ import { describe, expect, it } from 'vitest';
 
 import { resolveStoredReportLocale, setStoredReportLocale } from '../src/lib/report-preferences';
 
-describe('报告语言锁定偏好', () => {
-  it('应该优先读取已存储的 locale', () => {
+describe('Report locale preferences', () => {
+  it('returns stored locale when present', () => {
     const locale = resolveStoredReportLocale({
-      parsedData: JSON.stringify({ locale: 'zh' }),
+      parsedData: JSON.stringify({ locale: 'en' }),
       aiReport: 'Core Identity: This should be ignored.',
     }, 'en');
 
-    expect(locale).toBe('zh');
+    expect(locale).toBe('en');
   });
 
-  it('在旧数据缺少 parsedData 时应该从报告正文推断中文', () => {
+  it('falls back to normalized locale when missing', () => {
     const locale = resolveStoredReportLocale({
-      aiReport: `核心身份：整体底盘不差，当前只是阶段性调整。\n\n## 命格总论\n- 先稳节奏，再谈突破。`,
-      coreIdentity: '命宫主星：天相',
-    }, 'en');
-
-    expect(locale).toBe('zh');
-  });
-
-  it('在没有显式线索时应该回退到请求语言', () => {
-    const locale = resolveStoredReportLocale({
-      coreIdentity: '命宫主星：天相，五行属土五局',
+      coreIdentity: 'Life palace stars: Advisor.',
     }, 'zh');
 
-    expect(locale).toBe('zh');
+    expect(locale).toBe('en');
   });
 
-  it('写回 locale 时应该保留既有偏好字段', () => {
+  it('preserves existing preference fields when updating locale', () => {
     const parsed = setStoredReportLocale(
       JSON.stringify({ locale: 'en', tone: 'steady', version: 2 }),
-      'zh'
+      'en'
     );
 
     expect(JSON.parse(parsed)).toEqual({
-      locale: 'zh',
+      locale: 'en',
       tone: 'steady',
       version: 2,
     });

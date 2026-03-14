@@ -1,55 +1,48 @@
 /**
- * 真太阳时计算模块
- * True Solar Time Calculator
+ * True solar time calculator.
  */
 
-const SHICHEN_NAMES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+const SHICHEN_NAMES = ['Zi', 'Chou', 'Yin', 'Mao', 'Chen', 'Si', 'Wu', 'Wei', 'Shen', 'You', 'Xu', 'Hai'];
 
 export interface SolarTimeResult {
-  /** 真太阳时对应的本地时间 */
+  /** True solar time as a local Date */
   trueSolarTime: Date;
-  /** 时辰索引 (0-11 对应子时到亥时) */
+  /** Shichen index (0-11) */
   shichen: number;
-  /** 时辰名称 */
+  /** Shichen label */
   shichenName: string;
-  /** 时间调整量（分钟） */
+  /** Time adjustment (minutes) */
   adjustment: number;
-  /** 经度调整（分钟） */
+  /** Longitude adjustment (minutes) */
   longitudeAdjustment: number;
-  /** 均时差（分钟） */
+  /** Equation of time (minutes) */
   equationOfTime: number;
 }
 
 /**
- * 计算真太阳时
- * @param localTime 本地时间
- * @param longitude 经度（东经为正，西经为负）
- * @returns 真太阳时计算结果
+ * Calculate true solar time.
+ * @param localTime Local time
+ * @param longitude Longitude (east positive, west negative)
  */
 export function calculateTrueSolarTime(
   localTime: Date,
   longitude: number
 ): SolarTimeResult {
-  // 1. 计算经度调整
-  // 北京时间 = UTC+8 = 东经120°
-  // 每度经度差 = 4分钟
-  const longitudeOffset = (longitude - 120) * 4; // 分钟
+  // 1. Longitude adjustment
+  // Standard reference: UTC+8 = 120°E
+  // 1 degree longitude = 4 minutes
+  const longitudeOffset = (longitude - 120) * 4;
 
-  // 2. 计算均时差 (Equation of Time)
+  // 2. Equation of time
   const eot = calculateEquationOfTime(localTime);
 
-  // 3. 真太阳时调整 = 经度调整 + 均时差
+  // 3. Total adjustment
   const totalAdjustment = longitudeOffset + eot;
 
-  // 4. 计算真太阳时对应的 Date
+  // 4. True solar time
   const trueSolarTime = new Date(localTime.getTime() + totalAdjustment * 60 * 1000);
 
-  // 5. 确定时辰
-  // 时辰划分：
-  // 子时: 23:00-01:00 (跨日)
-  // 丑时: 01:00-03:00
-  // ...
-  // 亥时: 21:00-23:00
+  // 5. Shichen index
   const hour = trueSolarTime.getHours();
   const shichen = getShichenFromHour(hour);
 
@@ -64,55 +57,45 @@ export function calculateTrueSolarTime(
 }
 
 /**
- * 从小时数获取时辰索引
+ * Map hour to shichen index.
  */
 function getShichenFromHour(hour: number): number {
-  // 时辰对应关系：
-  // 23:00-00:59 -> 子时 (0)
-  // 01:00-02:59 -> 丑时 (1)
+  // 23:00-00:59 -> Zi (0)
+  // 01:00-02:59 -> Chou (1)
   // ...
-  // 21:00-22:59 -> 亥时 (11)
-  if (hour === 23) return 0; // 子时开始
+  // 21:00-22:59 -> Hai (11)
+  if (hour === 23) return 0;
   return Math.floor((hour + 1) / 2) % 12;
 }
 
 /**
- * 计算均时差 (Equation of Time)
- * 使用简化算法，基于 NOAA 公式
- * @param date 日期
- * @returns 均时差（分钟）
+ * Calculate equation of time (NOAA approximation).
  */
 function calculateEquationOfTime(date: Date): number {
-  // 计算年积日 (Day of Year)
   const startOfYear = new Date(date.getFullYear(), 0, 0);
   const diff = date.getTime() - startOfYear.getTime();
   const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-  // 计算太阳平近点角
   const gamma = (2 * Math.PI * (dayOfYear - 1)) / 365;
 
-  // 均时差公式 (分钟)
-  // 来源：NOAA Solar Calculator
-  const eot = 229.18 * (
+  return 229.18 * (
     0.000075 +
     0.001868 * Math.cos(gamma) -
     0.032077 * Math.sin(gamma) -
     0.014615 * Math.cos(2 * gamma) -
     0.040849 * Math.sin(2 * gamma)
   );
-
-  return eot;
 }
 
 /**
- * 获取时辰名称
+ * Get shichen label.
  */
 export function getShichenName(index: number): string {
-  return SHICHEN_NAMES[index] || '未知';
+  return SHICHEN_NAMES[index] || 'Unknown';
 }
 
 /**
- * 获取时辰完整信息
+ * Get shichen info.
  */
 export function getShichenInfo(index: number): {
   name: string;
@@ -120,18 +103,18 @@ export function getShichenInfo(index: number): {
   animal: string;
 } {
   const info = [
-    { name: '子', timeRange: '23:00-01:00', animal: '鼠' },
-    { name: '丑', timeRange: '01:00-03:00', animal: '牛' },
-    { name: '寅', timeRange: '03:00-05:00', animal: '虎' },
-    { name: '卯', timeRange: '05:00-07:00', animal: '兔' },
-    { name: '辰', timeRange: '07:00-09:00', animal: '龙' },
-    { name: '巳', timeRange: '09:00-11:00', animal: '蛇' },
-    { name: '午', timeRange: '11:00-13:00', animal: '马' },
-    { name: '未', timeRange: '13:00-15:00', animal: '羊' },
-    { name: '申', timeRange: '15:00-17:00', animal: '猴' },
-    { name: '酉', timeRange: '17:00-19:00', animal: '鸡' },
-    { name: '戌', timeRange: '19:00-21:00', animal: '狗' },
-    { name: '亥', timeRange: '21:00-23:00', animal: '猪' },
+    { name: 'Zi', timeRange: '23:00-01:00', animal: 'Rat' },
+    { name: 'Chou', timeRange: '01:00-03:00', animal: 'Ox' },
+    { name: 'Yin', timeRange: '03:00-05:00', animal: 'Tiger' },
+    { name: 'Mao', timeRange: '05:00-07:00', animal: 'Rabbit' },
+    { name: 'Chen', timeRange: '07:00-09:00', animal: 'Dragon' },
+    { name: 'Si', timeRange: '09:00-11:00', animal: 'Snake' },
+    { name: 'Wu', timeRange: '11:00-13:00', animal: 'Horse' },
+    { name: 'Wei', timeRange: '13:00-15:00', animal: 'Goat' },
+    { name: 'Shen', timeRange: '15:00-17:00', animal: 'Monkey' },
+    { name: 'You', timeRange: '17:00-19:00', animal: 'Rooster' },
+    { name: 'Xu', timeRange: '19:00-21:00', animal: 'Dog' },
+    { name: 'Hai', timeRange: '21:00-23:00', animal: 'Pig' },
   ];
-  return info[index] || { name: '未知', timeRange: '', animal: '' };
+  return info[index] || { name: 'Unknown', timeRange: '', animal: '' };
 }

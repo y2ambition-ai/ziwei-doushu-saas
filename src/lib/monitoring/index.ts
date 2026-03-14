@@ -1,11 +1,11 @@
 /**
- * 错误监控工具
- * 统一封装 Sentry 错误上报
+ * Error monitoring utilities.
+ * Centralizes Sentry reporting.
  */
 import * as Sentry from '@sentry/nextjs';
 
 /**
- * 捕获 API 错误并上报到 Sentry
+ * Capture API errors and send to Sentry.
  */
 export function captureApiError(
   error: unknown,
@@ -17,7 +17,7 @@ export function captureApiError(
     extra?: Record<string, unknown>;
   }
 ) {
-  // 构建错误上下文
+  // Build context
   Sentry.withScope((scope) => {
     scope.setTag('type', 'api_error');
     scope.setTag('endpoint', context.endpoint);
@@ -39,14 +39,14 @@ export function captureApiError(
     Sentry.captureException(error);
   });
 
-  // 同时输出到控制台（开发环境）
+  // Also log to console in development
   if (process.env.NODE_ENV === 'development') {
     console.error(`[API Error] ${context.method} ${context.endpoint}:`, error);
   }
 }
 
 /**
- * 捕获支付错误
+ * Capture payment errors.
  */
 export function capturePaymentError(
   error: unknown,
@@ -87,7 +87,7 @@ export function capturePaymentError(
 }
 
 /**
- * 捕获 AI 生成错误
+ * Capture AI generation errors.
  */
 export function captureAIGenerationError(
   error: unknown,
@@ -120,8 +120,7 @@ export function captureAIGenerationError(
 }
 
 /**
- * 记录性能指标
- * 使用 Sentry 的 span 记录性能数据
+ * Record performance metrics using Sentry spans.
  */
 export function recordPerformance(
   name: string,
@@ -136,10 +135,10 @@ export function recordPerformance(
       });
     }
 
-    // 记录性能指标作为额外信息
+    // Attach duration as extra
     scope.setExtra('duration_ms', durationMs);
 
-    // 发送性能指标消息
+    // Send performance message
     Sentry.captureMessage(`Performance: ${name} - ${durationMs}ms`, 'info');
   });
 }
