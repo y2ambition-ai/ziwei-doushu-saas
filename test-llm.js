@@ -57,6 +57,19 @@ function normalizeBaseURL(baseURL) {
 }
 
 function extractResponseText(data) {
+  const error = data?.error;
+  if (typeof error === 'string' && error.trim()) {
+    throw new Error(error.trim());
+  }
+
+  if (error && typeof error === 'object') {
+    const detail = typeof error.detail === 'string' ? error.detail.trim() : '';
+    const message = typeof error.message === 'string' ? error.message.trim() : '';
+    if (detail || message) {
+      throw new Error(detail || message);
+    }
+  }
+
   if (typeof data?.output_text === 'string' && data.output_text.trim()) {
     return data.output_text.trim();
   }
@@ -74,6 +87,60 @@ function extractResponseText(data) {
   }
 
   return chunks.join('\n').trim();
+}
+
+async function extractStreamingText(response) {
+  const contentType = response.headers.get('content-type') || '';
+  const text = await response.text();
+
+  if (!contentType.includes('text/event-stream')) {
+    const parsed = JSON.parse(text);
+    const detail = parsed?.error?.detail || parsed?.error?.message || parsed?.detail || parsed?.error;
+    throw new Error(detail || text);
+  }
+
+  const blocks = text.split(/\n\n+/).map((block) => block.trim()).filter(Boolean);
+  const deltas = [];
+  let finalText = '';
+
+  for (const block of blocks) {
+    const dataLine = block
+      .split(/\r?\n/)
+      .find((line) => line.startsWith('data:'));
+
+    if (!dataLine) {
+      continue;
+    }
+
+    const raw = dataLine.slice(5).trim();
+    if (!raw || raw === '[DONE]') {
+      continue;
+    }
+
+    const payload = JSON.parse(raw);
+    const type = payload?.type;
+
+    if (payload?.error) {
+      throw new Error(payload.error.detail || payload.error.message || payload.error);
+    }
+
+    if (type === 'response.output_text.delta' && typeof payload.delta === 'string') {
+      deltas.push(payload.delta);
+    }
+
+    if (type === 'response.output_text.done' && typeof payload.text === 'string' && payload.text.trim()) {
+      finalText = payload.text.trim();
+    }
+
+    if (type === 'response.completed') {
+      const completedText = extractResponseText(payload.response);
+      if (completedText) {
+        finalText = completedText;
+      }
+    }
+  }
+
+  return finalText || deltas.join('').trim();
 }
 
 async function main() {
@@ -100,29 +167,41 @@ async function main() {
     body: JSON.stringify({
       model,
       instructions: 'You are a precise assistant. Reply in markdown.',
-      input: 'Write a 5-line connectivity confirmation for the Zi Wei report generator. Mention the model is reachable and output only English.',
+      input: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'input_text',
+              text: 'Write a 5-line connectivity confirmation for the Zi Wei report generator. Mention the model is reachable and output only English.',
+            },
+          ],
+        },
+      ],
       max_output_tokens: 256,
-      temperature: 0.2,
+      store: false,
+      stream: true,
+      text: {
+        format: {
+          type: 'text',
+        },
+      },
     }),
   });
 
-  const data = await response.json();
-
   if (!response.ok) {
-    console.error(JSON.stringify(data, null, 2));
+    const errorText = await response.text();
+    console.error(errorText);
     throw new Error(`LLM request failed with status ${response.status}`);
   }
 
-  const content = extractResponseText(data);
+  const content = await extractStreamingText(response);
   if (!content) {
     throw new Error('LLM returned no text content');
   }
 
   fs.writeFileSync('test-output.md', content, 'utf8');
   console.log('Saved model output to test-output.md');
-  if (data.usage) {
-    console.log(JSON.stringify(data.usage, null, 2));
-  }
 }
 
 main().catch((error) => {
